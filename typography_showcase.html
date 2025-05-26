@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aethoria's Chronicle - Typographic Arts</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=IM+Fell+English&family=MedievalSharp&family=Dancing+Script&family=Lavishly+Yours&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/aethoria_theme.css"> <link rel="stylesheet" href="css/typography_showcase.css"> 
+<style>
+   /* --- In aethoria_theme.css (conceptual general styles) --- */
+body.parchment-background {
+    background-color: #FBF0D9; /* A creamy parchment base */
+    /* We would ideally use a subtle parchment texture image: */
+    /* background-image: url('../images/parchment_texture_light.png'); */
+    /* background-blend-mode: multiply; (if using color overlay) */
+    color: #3a291c; /* Dark sepia/brown for default text "ink" */
+    margin: 0;
+    padding: 2em; /* Give some breathing room */
+    font-family: 'IM Fell English', serif; /* Default body font */
+    font-size: 16px; /* Base size, adjust as needed */
+    line-height: 1.6;
+}
+
+/* Conceptual "Pools of Light" - very simplified example */
+/* This would need much more finessing with gradients, possibly pseudo-elements,
+   or even JavaScript for dynamic effects, but here's a basic idea for static areas. */
+.parchment-background {
+    /* A large, soft radial gradient to simulate a central light source */
+    background-image: 
+        /* url('../images/parchment_texture_light.png'), Uncomment when texture is ready */
+        radial-gradient(circle at center, 
+            rgba(255, 245, 220, 0.5) 0%,  /* Brighter, slightly more yellow center */
+            rgba(251, 240, 217, 0.2) 40%, /* Mid-tone parchment */
+            rgba(245, 230, 200, 0.0) 70%  /* Fading to base parchment or darker edges */
+        );
+    background-color: #FBF0D9; /* Fallback base parchment color */
+    /* If using a texture image, ensure it's beneath the gradient or blended */
+}
+
+/* --- In typography_showcase.css (specific to this page) --- */
+
+/* Font Family Definitions (Referencing Google Fonts import in HTML) */
+.font-great-vibes { font-family: 'Great Vibes', cursive; }
+.font-im-fell-english { font-family: 'IM Fell English', serif; }
+.font-medievalsharp { font-family: 'MedievalSharp', cursive; } /* Cursive is a fallback category */
+.font-dancing-script { font-family: 'Dancing Script', cursive; }
+.font-lavishly-yours { font-family: 'Lavishly Yours', cursive; }
+
+/* General Page Structure */
+.showcase-header, .showcase-footer {
+    text-align: center;
+    margin-bottom: 2em;
+}
+.showcase-footer {
+    margin-top: 3em;
+    border-top: 1px solid rgba(58, 41, 28, 0.3); /* Faint ink line */
+    padding-top: 1em;
+}
+.font-section {
+    margin-bottom: 3em;
+    padding: 1.5em;
+    border: 1px solid rgba(58, 41, 28, 0.1); /* Very subtle border for sections */
+    border-radius: 3px; /* Slightly softened edges, like worn parchment */
+    /* Each section could have its own subtle radial gradient if we want many "pools of light" */
+}
+.section-subtitle {
+    font-size: 1.4em;
+    color: #5a392c; /* Slightly richer ink for subtitles */
+    margin-bottom: 0.8em;
+    border-bottom: 1px solid rgba(58, 41, 28, 0.2);
+    padding-bottom: 0.3em;
+}
+
+/* Heading Styles */
+.page-title {
+    font-size: 3.5em; /* Example size */
+    color: #4a291c; /* Richer, darker ink */
+    margin-bottom: 0.5em;
+    /* Potential for text-shadow for 'embossed' or 'rich ink' feel: */
+    /* text-shadow: 1px 1px 1px rgba(0,0,0,0.1); */
+}
+.heading-large { font-size: 2.8em; margin-bottom: 0.3em; color: #4a291c;}
+.heading-medium { font-size: 2.2em; margin-bottom: 0.3em; color: #4a291c;}
+.heading-small { font-size: 1.8em; margin-bottom: 0.3em; color: #4a291c;}
+
+/* Body Text Style */
+.body-text-example {
+    font-size: 1.2em; /* Or slightly larger, e.g., 1.1em, for IM Fell English if needed */
+    line-height: 1.7; /* IM Fell can benefit from generous line height */
+    max-width: 65ch; /* Good for readability */
+    /* text-align: justify; (can look bookish, but watch for spacing issues) */
+}
+
+/* Annotation & Label Styles */
+.annotation-example, .marginal-note-example {
+    font-size: 0.9em;
+    font-style: italic; /* Optional for annotations */
+    color: #6a493c; /* Slightly lighter ink */
+}
+.marginal-note-example {
+    display: block; /* Or float, depending on layout */
+    margin-top: 0.5em;
+    padding-left: 1em;
+    border-left: 1px solid rgba(58, 41, 28, 0.2);
+}
+.ui-label-example {
+    font-size: 0.9em;
+    font-weight: bold; /* Or rely on MedievalSharp's inherent weight */
+    color: #5a392c;
+}
+
+/* Input Field Simulation Styles */
+.input-field-simulation {
+    /* This would be the "parchment indentation" style */
+    background-color: rgba(245, 235, 215, 0.3); /* Slightly different shade for indentation */
+    border: 1px solid rgba(220, 210, 190, 0.5); /* Softer border for indentation */
+    padding: 0.5em 0.8em;
+    border-radius: 3px; /* Softened edges */
+    min-height: 1.5em; /* To show the text */
+    box-shadow: inset 1px 1px 3px rgba(0,0,0,0.05); /* Subtle inner shadow for depth */
+}
+.input-text-example {
+    font-size: 1.5em; /* Dancing script might need to be a bit larger */
+    color: #3a291c; /* Standard ink */
+}
+
+/* Decorative Text Style */
+.decorative-text-example {
+    font-size: 2.1em; /* Lavishly Yours might look good larger */
+    text-align: center;
+    color: #4a291c;
+    line-height: 1.9;
+}
+
+/* Combined Example Specifics */
+.combined-example .marginal-note-example {
+    font-size: 0.8em;
+    display: inline; /* Different styling for inline note */
+    margin-left: 0.5em;
+    padding-left: 0;
+    border-left: none;
+    font-style: italic;
+}
+
+</style>
+</head>
+<body class="parchment-background">
+
+    <header class="showcase-header">
+        <h1 class="font-great-vibes page-title">Aethoria's Chronicle - Typographic Arts</h1>
+    </header>
+
+    <main class="showcase-content">
+        <section class="font-section">
+            <h2 class="font-medievalsharp section-subtitle">Grand Titles & Chapter Headers</h2>
+            <p><span class="font-great-vibes heading-large">The Hearth & Hall of Sagas</span></p>
+            <p><span class="font-great-vibes heading-medium">Character Creation</span></p>
+            <p><span class="font-great-vibes heading-small">Strength</span></p>
+        </section>
+
+        <section class="font-section">
+            <h2 class="font-medievalsharp section-subtitle">Narratives & Descriptions</h2>
+            <p class="font-im-fell-english body-text-example">
+                The ancient tome spoke of forgotten realms, where magic flowed as freely as the mountain streams, 
+                and heroes were forged in the crucible of adventure. Its aged pages, rich with the scent of dust 
+                and time, whispered secrets to those patient enough to listen, promising glory and peril in equal measure.
+            </p>
+        </section>
+
+        <section class="font-section">
+            <h2 class="font-medievalsharp section-subtitle">Marginalia, Flavor & Subtle Labels</h2>
+            <p class="font-medievalsharp annotation-example">As foretold by the Alchemist...</p>
+            <p><span class="font-medievalsharp ui-label-example">Ability Scores</span></p>
+            <p class="font-medievalsharp flavor-text-example">"Where shadows dance, secrets sleep."</p>
+        </section>
+
+        <section class="font-section">
+            <h2 class="font-medievalsharp section-subtitle">The Scribe's Hand - Input Fields</h2>
+            <div class="input-field-simulation parchment-indentation">
+                <span class="font-dancing-script input-text-example">Elara Meadowlight, Rogue of the Hidden Paths...</span>
+            </div>
+        </section>
+
+        <section class="font-section">
+            <h2 class="font-medievalsharp section-subtitle">Formal Invitations & Decrees</h2>
+            <p class="font-lavishly-yours decorative-text-example">
+                Hark, brave adventurer! Thou art summoned to the court of King Oberon 
+                to embark upon a quest of dire import to all the free peoples of Eldoria.
+            </p>
+        </section>
+
+        <section class="font-section combined-example">
+            <h2 class="font-medievalsharp section-subtitle">A Harmonious Composition</h2>
+            <div>
+                <h3 class="font-great-vibes heading-medium">The Dragon's Hoard</h3>
+                <p class="font-im-fell-english body-text-example">
+                    Deep within Mount Cinder, the great red dragon Ignis guarded a treasure 
+                    beyond mortal comprehension. Many have tried to claim it; none have returned.
+                    <span class="font-medievalsharp marginal-note-example">Beware its fiery breath!</span>
+                </p>
+                <div class="input-field-simulation parchment-indentation" style="margin-top: 1em;">
+                    <label class="font-medievalsharp ui-label-example" style="display: block; margin-bottom: 0.2em;">Your Name, Brave Soul:</label>
+                    <span class="font-dancing-script input-text-example">Sir Reginald the Bold</span>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="showcase-footer">
+        <p class="font-medievalsharp" style="text-align: center; font-size: 0.8em;">End of Typographic Showcase</p>
+    </footer>
+
+</body>
+</html>

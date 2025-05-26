@@ -1,0 +1,62 @@
+digraph UserFlow4_UserConsultsCodex_Vertical {
+    // General graph attributes
+    rankdir="TB"; 
+    node [shape="box", style="rounded,filled", fillcolor="#FBF0D9", fontname="IM Fell English", color="#5a392c", fontcolor="#3a291c"];
+    edge [fontname="IM Fell English", fontcolor="#5a392c", color="#5a392c"];
+    graph [splines="ortho"];
+
+    // Nodes (Screens, Processes, Decisions)
+    Start [label="Start:\nUser Needs Information\n(Player or DM, from any screen)", shape="ellipse", fillcolor="#E0E0E0"];
+    
+    NavigateToCodex [label="User Navigates to \"Codex\"\n(via Main Navigation)", shape="rectangle", style="filled", fillcolor="#E8DDCB"];
+    
+    CodexInterface [label="Screen: \"The Stacks of Aethoria\"\n(Codex Interface)\n(Search Bar & Browse Categories Visible)"];
+    
+    SearchOrBrowseDecision [label="User Decides:\nSearch or Browse?", shape="diamond", fillcolor="#D4C7B0"];
+    
+    // Path A: Search
+    UserSearches [label="Action: User Types Query\nin Search Bar", shape="rectangle", style="filled", fillcolor="#E8DDCB"];
+    ClickSearch [label="Action: User Clicks Search Rune", shape="rectangle", style="filled", fillcolor="#E8DDCB"];
+    SystemSearches [label="Process: System Performs Search\n& Retrieves Matching Entries", shape="rectangle", style="filled", fillcolor="#E8DDCB"];
+    DisplaySearchResults [label="Display: Search Results as\nList of \"Scroll Tags\"", fillcolor="#F0E8DD"];
+    
+    // Path B: Browse
+    UserBrowses [label="Action: User Selects Category\n(e.g., Spells, Bestiary, Items)", shape="rectangle", style="filled", fillcolor="#E8DDCB"];
+    NavigateSubcategories [label="Action: User Navigates\nSubcategories (if any)", shape="rectangle", style="filled", fillcolor="#E8DDCB"];
+    DisplayBrowseResults [label="Display: Filtered Results as\nList of \"Scroll Tags\"", fillcolor="#F0E8DD"];
+    
+    // Converging Path
+    SelectsEntry [label="User Clicks a \"Scroll Tag\"\n(Selects Specific Entry)", shape="rectangle", style="filled", fillcolor="#E8DDCB"];
+    
+    ViewContent [label="Screen: Content Display in \"The Stacks\"\n(Selected entry shown as \"Unfurled Scroll/Tome Page\")\nIncludes: Content, Thematic Marginalia,\nSource Notation (e.g., \"PHB, pg. X\")"];
+    
+    UserInteractsWithContent [label="Process: User Reads Content.\nMay Click Cross-References within text.", shape="rectangle", style="filled", fillcolor="#E8DDCB"];
+    
+    FurtherActionDecision [label="User Decides\nNext Action", shape="diamond", fillcolor="#D4C7B0"];
+
+    End [label="End:\nInformation Retrieved or\nUser Exits Codex", shape="ellipse", fillcolor="#E0E0E0"];
+
+    // Edges (Connections & Flow)
+    Start -> NavigateToCodex;
+    NavigateToCodex -> CodexInterface;
+    CodexInterface -> SearchOrBrowseDecision;
+    
+    SearchOrBrowseDecision -> UserSearches [label="Search"];
+    UserSearches -> ClickSearch;
+    ClickSearch -> SystemSearches;
+    SystemSearches -> DisplaySearchResults;
+    DisplaySearchResults -> SelectsEntry [label="Chooses from results"];
+    
+    SearchOrBrowseDecision -> UserBrowses [label="Browse"];
+    UserBrowses -> NavigateSubcategories; // This might be a loop or further steps
+    NavigateSubcategories -> DisplayBrowseResults; // Or UserBrowses directly to DisplayBrowseResults if no subcategories
+    DisplayBrowseResults -> SelectsEntry [label="Chooses from results"];
+    
+    SelectsEntry -> ViewContent [label="Content Unfurls/\nBook Opens"];
+    ViewContent -> UserInteractsWithContent;
+    UserInteractsWithContent -> ViewContent [label="Clicks Cross-Reference\n(New content loads)"]; // Loop for internal navigation
+    UserInteractsWithContent -> FurtherActionDecision [label="Finished Reading/\nDone with entry"];
+    
+    FurtherActionDecision -> CodexInterface [label="New Search/\nBrowse Again"];
+    FurtherActionDecision -> End [label="Exits Codex\n(via Main Navigation)"];
+}

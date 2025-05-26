@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aethoria's Chronicle - Integrated UI Concept</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=IM+Fell+English&family=MedievalSharp&family=Dancing+Script&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="integrated_styles.css">
+    <style>
+        /* --- General Page Styling (remains the same) --- */
+body.parchment-background-page {
+    background-color: #FBF0D9; /* Base creamy parchment */
+    /* background-image: url('path/to/your/parchment_texture.png'); */
+    color: #3a291c; /* Default dark sepia/brown "ink" */
+    font-family: 'IM Fell English', serif;
+    font-size: 16px; /* Using your refined sizes from typography showcase */
+    line-height: 1.6;
+    margin: 0;
+    padding: 2em;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-image: radial-gradient(circle at center, 
+        rgba(255, 245, 220, 0.6) 0%, 
+        rgba(251, 240, 217, 0.3) 50%,
+        rgba(245, 230, 200, 0.0) 80%), /* url('path/to/your/parchment_texture_subtle.png'); */
+    background-color #FBF0D9;
+}
+
+.scene-container {
+    width: auto;
+    max-width: 600px;
+}
+
+/* --- Font Family Definitions (remains the same) --- */
+.font-great-vibes { font-family: 'Great Vibes', cursive; }
+.font-im-fell-english { font-family: 'IM Fell English', serif; }
+.font-medievalsharp { font-family: 'MedievalSharp', cursive; }
+.font-dancing-script { font-family: 'Dancing Script', cursive; }
+
+/* --- Content Panel: Aged Scroll Segment (NEW STYLING) --- */
+.content-panel.aged-scroll-segment {
+    background-color: #F8F0E0; /* Slightly different aged parchment for the scroll itself */
+    /* background-image: url('path/to/your/aged_scroll_texture.png'); /* More worn texture */
+    border: 1px solid #C8B898; /* A faded, slightly irregular ink or discolored edge */
+    padding: 25px 35px; /* Ample padding for content on the scroll */
+    box-shadow: 3px 3px 10px rgba(0,0,0,0.2), inset 0 0 15px rgba(0,0,0,0.05); /* Softer shadow, slight inner texture */
+    
+    /* For "scroll-like and a little worn" edges (conceptual CSS): */
+    /* Method 1: Subtle wavy border using pseudo-elements (complex for conceptual) */
+    /* Method 2: Using border-image with a pre-made worn scroll edge texture (ideal for production) */
+    /* border-image-source: url('path/to/your/scroll_edge_texture.svg'); */
+    /* border-image-slice: 10 15; */ /* Adjust slice values */
+    /* border-image-width: 10px 15px; */ /* Adjust width */
+    /* border-image-repeat: stretch; OR repeat; */
+    /* border-style: solid; */ /* border-style must be set for border-image to work */
+
+    /* Method 3: Simple rounded corners that hint at irregularity (less "scroll-like" but simple) */
+    /* border-radius: 2px 10px 2px 10px / 10px 2px 10px 2px; */ /* Asymmetric rounding */
+    
+    /* For MVP conceptual CSS without images, we'll rely on a simple border and the background texture.
+       The key is *not* having the structured corners of the "leather-journal-page". */
+    border-radius: 3px; /* Minimal rounding, main effect from texture and border color */
+}
+
+/* --- Panel Title (remains the same) --- */
+.panel-title.font-great-vibes {
+    font-size: 3.5em; /* Your refined size */
+    color: #4a291c; 
+    text-align: center;
+    margin-bottom: 0.8em;
+}
+
+/* --- Form Grouping & Labels (using your refined sizes) --- */
+.form-group {
+    margin-bottom: 1.2em;
+}
+.input-label.font-medievalsharp {
+    display: block;
+    font-size: 1.1em; /* Your previous preference was 0.9 for ui-label, let's use 1.1 for this form label */
+    color: #5a392c; 
+    margin-bottom: 0.4em;
+}
+
+/* --- Text Input Field ("Scribe's Indentation") (using your refined sizes) --- */
+.input-field-simulation.parchment-indentation {
+    background-color: rgba(245, 235, 215, 0.4); 
+    border: 1px solid rgba(220, 210, 190, 0.7);
+    padding: 0.6em 0.9em;
+    border-radius: 3px;
+    box-shadow: inset 1px 1px 4px rgba(0,0,0,0.08);
+    /* cursor: url('path/to/your/quill_tip_cursor.cur'), auto; */
+}
+.input-field-simulation.text-area-simulation {
+    min-height: 80px; 
+    line-height: 1.4;
+}
+.input-text-example.font-dancing-script {
+    font-size: 1.5em; /* Your refined size */
+    color: #3a291c; 
+}
+
+/* --- Primary Action Button ("Glowing Rune on Wax Seal") (remains largely the same) --- */
+.action-button.glowing-rune-seal {
+    display: inline-block;
+    position: relative; 
+    padding: 10px 12px;
+    border-radius: 50%; 
+    cursor: pointer;
+    transition: transform 0.1s ease-out, box-shadow 0.2s ease;
+    text-align: center;
+}
+.action-button.wax-seal {
+    /* background-image: url('path/to/your/wax_texture.png'); */
+    box-shadow: 2px 2px 5px rgba(0,0,0,0.2);
+}
+.action-button.red-seal {
+    background-color: #a02c2c; 
+    border: 1px solid #701e1e; 
+}
+.rune-symbol {
+    font-size: 1.8em; 
+    color: #FFD700; 
+    text-shadow: 0 0 5px #FFD700, 0 0 10px #FFB000; 
+    line-height: 1;
+    display: inline-block;
+    transition: text-shadow 0.3s ease;
+}
+.action-button .tooltip-text { /* Tooltip styles remain the same */
+    visibility: hidden;
+    width: 120px;
+    background-color: #4a321f; 
+    color: #FBF0D9; 
+    text-align: center;
+    border-radius: 4px;
+    padding: 5px 0;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%; 
+    left: 50%;
+    margin-left: -60px; 
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-family: 'MedievalSharp', cursive;
+    font-size: 0.9em;
+}
+.action-button:hover .tooltip-text {
+    visibility: visible;
+    opacity: 1;
+}
+.button-container {
+    text-align: center; 
+    margin-top: 1.5em;
+}
+
+/* Hover and Active states for button remain conceptually the same */
+.action-button.glowing-rune-seal:hover .rune-symbol {
+    text-shadow: 0 0 8px #FFF, 0 0 15px #FFD700, 0 0 20px #FFB000;
+}
+.action-button.glowing-rune-seal:hover {
+    transform: translateY(-1px);
+    box-shadow: 3px 3px 8px rgba(0,0,0,0.3);
+}
+.action-button.glowing-rune-seal:active {
+    transform: translateY(1px);
+    box-shadow: 1px 1px 3px rgba(0,0,0,0.3);
+}
+    </style>
+</head>
+<body class="parchment-background-page">
+
+    <div class="scene-container">
+        <div class="content-panel aged-scroll-segment"> 
+            <h2 class="panel-title font-great-vibes">Send a Missive</h2>
+
+            <div class="form-group">
+                <label for="recipientName" class="input-label font-medievalsharp">Recipient's Name:</label>
+                <div class="input-field-simulation parchment-indentation" id="recipientName">
+                    <span class="input-text-example font-dancing-script">Elara Meadowlight</span>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="missiveSubject" class="input-label font-medievalsharp">Subject of Missive:</label>
+                <div class="input-field-simulation parchment-indentation" id="missiveSubject">
+                    <span class="input-text-example font-dancing-script">Urgent Tidings from the North</span>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label for="missiveBody" class="input-label font-medievalsharp">Your Message:</label>
+                <div class="input-field-simulation parchment-indentation text-area-simulation">
+                    <span class="input-text-example font-dancing-script">The shadows lengthen, and ancient whispers ride upon the wind. We must convene at the old oak by moonrise...</span>
+                </div>
+            </div>
+
+            <div class="button-container">
+                <div class="action-button glowing-rune-seal wax-seal red-seal" tabindex="0" role="button" aria-pressed="false">
+                    <span class="rune-symbol">❖</span> 
+                    <span class="tooltip-text">Dispatch Missive</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

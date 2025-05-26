@@ -1,0 +1,47 @@
+digraph UserFlow3_DMCreatesCampaignAndInvites_Vertical {
+    // General graph attributes
+    rankdir="TB"; 
+    node [shape="box", style="rounded,filled", fillcolor="#FBF0D9", fontname="IM Fell English", color="#5a392c", fontcolor="#3a291c"];
+    edge [fontname="IM Fell English", fontcolor="#5a392c", color="#5a392c"];
+    graph [splines="ortho"];
+
+    // Nodes (Screens, Processes, Decisions)
+    Start [label="Start:\nDM Journey to Create Saga", shape="ellipse", fillcolor="#E0E0E0"];
+    
+    MainDashboard [label="Screen: Main Dashboard\n(\"The Hearth & Hall of Sagas\")"];
+    ClickForgeNewCampaign [label="User Clicks:\n\"Forge New Campaign\" Rune", shape="rectangle", style="filled", fillcolor="#E8DDCB"];
+    
+    CampaignCreationPage [label="Screen: Campaign Creation Page\n(\"The Chronicler's & Cartographer's Desk\")\n(New Campaign Setup)\nDM Enters: Title, Description, Banner (opt.),\nMax Players, Next Session (Local Time w/ TZ),\nHouse Rules. Ruleset: SRD (default)."];
+    
+    ClickInscribeCampaign [label="DM Clicks:\n\"Inscribe Campaign\" Seal", shape="rectangle", style="filled", fillcolor="#E8DDCB"];
+    ProcessCampaignCreation [label="Process: New Campaign Data Saved\nSystem confirms: \"Your new saga... has been chronicled!\"", shape="rectangle", style="filled", fillcolor="#E8DDCB"];
+    
+    DMCampaignManagementPage [label="Screen: DM Campaign Management Page\n(\"The Chronicler's & Cartographer's Desk\")\n(Newly Created Campaign Active)"];
+    
+    NavigateToInvites [label="DM Navigates to:\n\"Player Roster / Invite Adventurers\" section", shape="rectangle", style="filled", fillcolor="#E8DDCB"];
+    ClickInvitePlayers [label="DM Clicks:\n\"Invite Player(s)\" Rune", shape="rectangle", style="filled", fillcolor="#E8DDCB"];
+    
+    SendInvitationModal [label="Modal: Send Invitation Interface\n(\"The Messenger's Scroll\")\nDM Enters: Adventurer Username(s),\nOptional Personal Missive.\n(Placeholder for future: 'Seek Party Members' button)"];
+    
+    ClickDispatchSummons [label="DM Clicks:\n\"Dispatch All Summons\" Seal\n(MVP: Wax Seal animation & sound plays)", shape="rectangle", style="filled", fillcolor="#E8DDCB"];
+    ProcessInvitationsSent [label="Process: Invitations Dispatched\nInvited players listed as 'Pending'.\nSystem confirms: \"Your summons have taken flight!\"", shape="rectangle", style="filled", fillcolor="#E8DDCB"];
+
+    End [label="End:\nCampaign Created,\nInitial Invites Sent.\nDM continues managing campaign.", shape="ellipse", fillcolor="#E0E0E0"];
+
+    // Edges (Connections & Flow)
+    Start -> MainDashboard;
+    MainDashboard -> ClickForgeNewCampaign;
+    ClickForgeNewCampaign -> CampaignCreationPage;
+    CampaignCreationPage -> ClickInscribeCampaign;
+    ClickInscribeCampaign -> ProcessCampaignCreation;
+    ProcessCampaignCreation -> DMCampaignManagementPage;
+    
+    DMCampaignManagementPage -> NavigateToInvites;
+    NavigateToInvites -> ClickInvitePlayers;
+    ClickInvitePlayers -> SendInvitationModal;
+    SendInvitationModal -> ClickDispatchSummons;
+    ClickDispatchSummons -> ProcessInvitationsSent;
+    ProcessInvitationsSent -> DMCampaignManagementPage [label="Modal Closes,\nDM views updated roster"]; // Returns to manage page
+    
+    DMCampaignManagementPage -> End [label="DM may perform other actions\nor navigate away"];
+}

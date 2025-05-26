@@ -1,0 +1,16 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:15-alpine # Using PostgreSQL 15 on a lightweight Alpine Linux
+    restart: always
+    environment:
+      POSTGRES_USER: aethoria_user
+      POSTGRES_PASSWORD: aethoria_password # Choose a strong password in a real project!
+      POSTGRES_DB: aethoria_db
+    ports:
+      - "5432:5432" # Maps port 5432 on your machine to port 5432 in the container
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/ # Persists data
+
+volumes:
+  postgres_data:

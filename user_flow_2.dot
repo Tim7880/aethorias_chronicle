@@ -1,0 +1,49 @@
+digraph UserFlow2_ReturningPlayerAccessesCampaign_Vertical {
+    // General graph attributes
+    rankdir="TB"; 
+    node [shape="box", style="rounded,filled", fillcolor="#FBF0D9", fontname="IM Fell English", color="#5a392c", fontcolor="#3a291c"];
+    edge [fontname="IM Fell English", fontcolor="#5a392c", color="#5a392c"];
+    graph [splines="ortho"];
+
+    // Nodes (Screens, Processes, Decisions)
+    Start [label="Start:\nReturning Player Journey", shape="ellipse", fillcolor="#E0E0E0"];
+    
+    LoginPage [label="Screen: Login Page\n(\"The Tome's Threshold - Re-entry\")\nUser enters credentials."];
+    AttemptLogin [label="Process:\nAuthenticate User", shape="rectangle", fillcolor="#E8DDCB"];
+    LoginSuccessful [label="Login\nSuccessful?", shape="diamond", fillcolor="#D4C7B0"];
+    
+    MainDashboardPopulated [label="Screen: Main Dashboard\n(\"The Hearth & Hall of Sagas\")\nPopulated with \"Ongoing Sagas\"\n(Campaign cards show Title, DM, Localized Next Session Date,\n Thematic Banner. Journal cover animates on hover)."];
+    
+    SelectCampaign [label="User Selects a Campaign\n(from \"Ongoing Sagas\" list)", shape="rectangle", fillcolor="#E8DDCB"];
+    
+    CampaignHubMVP [label="Screen: Campaign-Specific Hub\n(\"The Adventure's Chapter\" - MVP)\nKey Features:\n- Shared Dice Roller & Log\n- Campaign Chat / In-Character Log\n- Shared Notes & DM Announcements (with Image Support)\n- Player Character Portraits/Names\n- Access to Own Character Sheet"];
+    
+    PlayerInteracts [label="Process: Player Interacts in Hub\n(Rolls dice, chats, views notes/images,\naccesses character sheet, etc.)", shape="rectangle", fillcolor="#E8DDCB"];
+    
+    ReturnToDashboard [label="User Clicks:\n\"Return to Hearth & Hall\"", shape="rectangle", fillcolor="#E8DDCB"];
+
+    End [label="End:\nSession Interaction Concluded\nor Navigates Elsewhere", shape="ellipse", fillcolor="#E0E0E0"];
+
+    // Edges (Connections & Flow)
+    Start -> LoginPage;
+    
+    LoginPage -> AttemptLogin [label="Clicks 'Login' Rune"];
+    AttemptLogin -> LoginSuccessful;
+    LoginSuccessful -> MainDashboardPopulated [label="Yes"];
+    LoginSuccessful -> LoginPage [label="No (e.g., wrong credentials)"]; // Loop back
+    
+    MainDashboardPopulated -> SelectCampaign [label="Identifies target campaign"];
+    SelectCampaign -> CampaignHubMVP [label="Clicks campaign card/\njournal"];
+    
+    CampaignHubMVP -> PlayerInteracts;
+    PlayerInteracts -> CampaignHubMVP [label="Continues interaction"]; // Loop for ongoing play
+    PlayerInteracts -> ReturnToDashboard [label="Decides to leave campaign hub"];
+    // Option to access character sheet (could be a loop back to CampaignHubMVP or a separate detail)
+    // PlayerInteracts -> CharacterSheetView_FromHub [label="Accesses Character Sheet"];
+    // CharacterSheetView_FromHub -> PlayerInteracts [label="Returns to Hub"];
+
+    ReturnToDashboard -> MainDashboardPopulated [label="Navigates back"];
+    MainDashboardPopulated -> End [label="Logs out or closes app"]; // General exit from dashboard
+    CampaignHubMVP -> End [label="Logs out or closes app\n(Alternative exit path)"]; // General exit from campaign hub
+
+}

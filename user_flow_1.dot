@@ -1,0 +1,71 @@
+digraph UserFlow1_NewUserOnboarding_Vertical {
+    // General graph attributes
+    rankdir="TB"; // Flow from Top to Bottom for vertical layout
+    // Consider adjusting fontsize if nodes are too large for the page
+    // fontsize="10"; // Example: uncomment and adjust if needed for graph, node, and edge
+    node [shape="box", style="rounded,filled", fillcolor="#FBF0D9", fontname="IM Fell English", color="#5a392c", fontcolor="#3a291c"/*, fontsize="10"*/];
+    edge [fontname="IM Fell English", fontcolor="#5a392c", color="#5a392c"/*, fontsize="9"*/];
+    graph [splines="ortho"]; // Can sometimes help with edge neatness in TB layouts
+
+    // Nodes (Screens, Processes, Decisions)
+    Start [label="Start:\nNew User Journey", shape="ellipse", fillcolor="#E0E0E0"];
+    RegistrationPage [label="Screen: Registration Page\n(\"The Tome's Threshold - Inscription\")\nUser enters Email, Username, Pwd.\nAgrees to ToS."];
+    AttemptRegistration [label="Process:\nAttempt Registration\n& Create Account", shape="rectangle", fillcolor="#E8DDCB"];
+    RegistrationSuccessful [label="Registration\nSuccessful?", shape="diamond", fillcolor="#D4C7B0"];
+    
+    LoginPage [label="Screen: Login Page\n(\"The Tome's Threshold - Re-entry\")\nUser enters credentials."];
+    AttemptLogin [label="Process:\nAuthenticate User", shape="rectangle", fillcolor="#E8DDCB"];
+    LoginSuccessful [label="Login\nSuccessful?", shape="diamond", fillcolor="#D4C7B0"];
+    WelcomeInterstitial [label="Screen: Welcome Interstitial\n(Optional, Thematic)\n\"Your Chronicle Begins...\""];
+    MainDashboardEmpty [label="Screen: Main Dashboard\n(\"The Hearth & Hall of Sagas\")\n(Empty State - Prompts Character Creation)"];
+    
+    // Character Creation Multi-Step Process (represented as a subgraph for grouping)
+    // For TB layout, clusters also tend to stack their contents vertically.
+    subgraph cluster_CharCreation {
+        label = "Process: Character Creation (\"Hero's Charter\")";
+        fontname="IM Fell English";
+        style="filled";
+        color="#D4C7B0"; 
+        fillcolor="#F5F0E5"; 
+
+        CC_Start [label="User Clicks:\n\"Craft Your First Hero\"", shape="rectangle", fillcolor="#E8DDCB"];
+        CC_Step_RaceClass [label="Step: Race & Class Selection\n(\"Lineage & Calling\")"];
+        CC_Step_Abilities [label="Step: Define Abilities\n(Roll Dice, Standard Array, Manual)"];
+        CC_Step_BackgroundSkills [label="Step: Background & Skills"];
+        CC_Step_Equipment [label="Step: Equipment"];
+        CC_Step_Persona [label="Step: Persona Details\n(Name, Description, Alignment)"];
+        CC_Finalize [label="User Clicks:\n\"Inscribe Your Hero\"", shape="rectangle", fillcolor="#E8DDCB"];
+    }
+    
+    CharacterSheetView [label="Screen: Character Sheet View\n(\"Adventurer's Personal Journal\")\n(First Unveiling)"];
+    End [label="End:\nCharacter Created", shape="ellipse", fillcolor="#E0E0E0"];
+
+    // Edges (Connections & Flow)
+    Start -> RegistrationPage;
+    RegistrationPage -> AttemptRegistration [label="Clicks 'Register' Rune"];
+    AttemptRegistration -> RegistrationSuccessful;
+    RegistrationSuccessful -> LoginPage [label="Yes (Account Created)\n(Email Sent in Parallel)"]; // Main flow
+    RegistrationSuccessful -> RegistrationPage [label="No (e.g., validation error)"]; // Loop back
+    
+    // Note: The non-blocking email confirmation process is a side detail. 
+    // For simplicity in a TB layout, it's often omitted from the main visual flow line 
+    // or could be linked from 'AttemptRegistration' without constraining rank if needed.
+
+    LoginPage -> AttemptLogin [label="Clicks 'Login' Rune"];
+    AttemptLogin -> LoginSuccessful;
+    LoginSuccessful -> WelcomeInterstitial [label="Yes"];
+    LoginSuccessful -> LoginPage [label="No (e.g., wrong credentials)"]; // Loop back
+    WelcomeInterstitial -> MainDashboardEmpty [label="Clicks 'Continue'"];
+    MainDashboardEmpty -> CC_Start; 
+
+    // Flow within Character Creation
+    CC_Start -> CC_Step_RaceClass;
+    CC_Step_RaceClass -> CC_Step_Abilities [label="Next Step"];
+    CC_Step_Abilities -> CC_Step_BackgroundSkills [label="Next Step"];
+    CC_Step_BackgroundSkills -> CC_Step_Equipment [label="Next Step"];
+    CC_Step_Equipment -> CC_Step_Persona [label="Next Step"];
+    CC_Step_Persona -> CC_Finalize;
+    
+    CC_Finalize -> CharacterSheetView;
+    CharacterSheetView -> End [label="User Explores/\nNavigates Away"];
+}
