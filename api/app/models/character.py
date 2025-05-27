@@ -1,5 +1,5 @@
 # Path: api/app/models/character.py
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, func, JSON
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, func, Boolean # <--- Add Boolean
 from sqlalchemy.orm import relationship
 from app.db.base_class import Base
 from typing import TYPE_CHECKING
@@ -7,7 +7,9 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from .user import User
     from .campaign_member import CampaignMember
-    from .character_skill import CharacterSkill # <--- ADD THIS IMPORT
+    from .character_skill import CharacterSkill
+    from .character_item import CharacterItem
+    from .character_spell import CharacterSpell
 
 class Character(Base):
     __tablename__ = "characters"
@@ -36,7 +38,9 @@ class Character(Base):
     hit_points_max = Column(Integer, nullable=True)
     armor_class = Column(Integer, nullable=True)
 
-    inventory = Column(JSON, nullable=True) 
+    # --- NEW FIELD FOR ASCENDED TIER ---
+    is_ascended_tier = Column(Boolean, default=False, nullable=False, index=True)
+    # --- END NEW FIELD ---
 
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
@@ -49,11 +53,22 @@ class Character(Base):
         cascade="all, delete-orphan"
     )
 
-    # Relationship to CharacterSkill association table
     skills = relationship(
         "CharacterSkill", 
         back_populates="character_owner", 
-        cascade="all, delete-orphan" # If character is deleted, their skill associations are deleted
-    ) # <--- ADD THIS RELATIONSHIP
+        cascade="all, delete-orphan"
+    )
+
+    inventory_items = relationship(
+        "CharacterItem",
+        back_populates="character_owner",
+        cascade="all, delete-orphan"
+    )
+
+    known_spells = relationship(
+        "CharacterSpell",
+        back_populates="character_owner",
+        cascade="all, delete-orphan"
+    )
 
 

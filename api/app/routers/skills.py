@@ -6,15 +6,15 @@ from typing import List
 from app.db.database import get_db
 from app.schemas.skill import Skill as SkillSchema
 from app.crud import crud_skill
-# For now, let's make listing skills an authenticated route for consistency,
-# but this could be made public if desired.
-from app.models.user import User as UserModel # For current_user dependency
-from app.routers.auth import get_current_active_user 
+from app.models.user import User as UserModel # For current_user dependency if routes are protected
+from app.routers.auth import get_current_active_user # For authentication
 
 router = APIRouter(
     prefix="/api/v1/skills",
     tags=["Skills"],
-    dependencies=[Depends(get_current_active_user)] # All skill routes require authentication for now
+    # For now, listing skills will also require authentication for consistency.
+    # This could be removed if skills are considered public data.
+    dependencies=[Depends(get_current_active_user)] 
 )
 
 @router.get("/", response_model=List[SkillSchema])
@@ -24,10 +24,20 @@ async def read_skills(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Retrieve a list of all predefined D&D skills.
+    Retrieve a list of all predefined D&D skills available in the system.
     """
     skills = await crud_skill.get_skills(db=db, skip=skip, limit=limit)
     return skills
 
-# We could add GET /skills/{skill_id} or /skills/{skill_name} if needed,
-# but for now, listing all is probably sufficient as they are predefined.
+# Potential future endpoint:
+# @router.get("/{skill_id}", response_model=SkillSchema)
+# async def read_skill(skill_id: int, db: AsyncSession = Depends(get_db)):
+#     db_skill = await crud_skill.get_skill_by_id(db, skill_id=skill_id)
+#     if db_skill is None:
+#         raise HTTPException(status_code=404, detail="Skill not found")
+#     return db_skill
+
+
+
+
+

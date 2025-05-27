@@ -1,9 +1,11 @@
 # Path: api/app/schemas/character.py
 from pydantic import BaseModel, Field
-from typing import Optional, List, Any 
+from typing import Optional, List
 from datetime import datetime
 
-from .skill import CharacterSkill as CharacterSkillSchema # <--- IMPORT CharacterSkill schema
+from .skill import CharacterSkill as CharacterSkillSchema
+from .item import CharacterItem as CharacterItemSchema
+from .character_spell import CharacterSpell as CharacterSpellSchema # <--- IMPORT CharacterSpell schema
 
 class CharacterBase(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
@@ -26,15 +28,11 @@ class CharacterBase(BaseModel):
     hit_points_max: Optional[int] = None
     armor_class: Optional[int] = None
 
-    inventory: Optional[List[Any]] = []
-
 class CharacterCreate(CharacterBase):
-    # For MVP, skill proficiencies will be handled via separate endpoints after character creation.
-    # Or, if added here, it might be a list of skill_ids to set as proficient.
-    # proficient_skill_ids: Optional[List[int]] = None 
+    # Known spells will be handled via separate endpoints after character creation.
     pass
 
-class CharacterUpdate(BaseModel):
+class CharacterUpdate(BaseModel): # All fields optional
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     race: Optional[str] = Field(None, max_length=50)
     character_class: Optional[str] = Field(None, max_length=50)
@@ -55,22 +53,21 @@ class CharacterUpdate(BaseModel):
     hit_points_max: Optional[int] = None
     armor_class: Optional[int] = None
 
-    inventory: Optional[List[Any]] = None
-    # Skill updates will be handled via dedicated endpoints for now.
-
 class CharacterInDBBase(CharacterBase):
     id: int
     user_id: int
     created_at: datetime
     updated_at: datetime
-    skills: List[CharacterSkillSchema] = [] # <--- ADDED skills field
+    
+    skills: List[CharacterSkillSchema] = []
+    inventory_items: List[CharacterItemSchema] = []
+    known_spells: List[CharacterSpellSchema] = [] # <--- ADDED list of known spells
 
     class Config:
         from_attributes = True
 
 class Character(CharacterInDBBase): # This IS our main Character response schema
     pass
-
 
 
 

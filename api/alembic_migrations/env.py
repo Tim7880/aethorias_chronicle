@@ -19,9 +19,6 @@ if config.config_file_name is not None:
 # Add your model's MetaData object here for 'autogenerate' support
 # Ensure all models are imported here so Base.metadata knows about them.
 from app.db.base_class import Base as AppBase  # Import your app's Base
-# Import settings AFTER AppBase and models if models rely on Base, 
-# though settings is primarily for DATABASE_URL here.
-# For run_migrations_online, we need the app's settings for the async DATABASE_URL
 from app.core.config import settings as app_settings # Use app's settings
 
 # Import all your application's models
@@ -29,8 +26,10 @@ from app.models.user import User
 from app.models.character import Character
 from app.models.campaign import Campaign
 from app.models.campaign_member import CampaignMember
-from app.models.skill import Skill  # <--- ADDED IMPORT
-from app.models.character_skill import CharacterSkill  # <--- ADDED IMPORT
+from app.models.skill import Skill
+from app.models.character_skill import CharacterSkill
+from app.models.item import Item  # <--- ADDED IMPORT
+from app.models.character_item import CharacterItem  # <--- ADDED IMPORT
 
 target_metadata = AppBase.metadata
 # --- End Aethoria's Chronicle Specific ---
@@ -82,3 +81,8 @@ if context.is_offline_mode():
     run_migrations_offline()
 else:
     asyncio.run(run_migrations_online())
+
+
+
+
+    
