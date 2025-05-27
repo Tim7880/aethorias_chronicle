@@ -1,3 +1,4 @@
+# Path: api/app/schemas/user.py
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 from datetime import datetime
@@ -12,14 +13,20 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     password: str = Field(..., min_length=8)
 
-# Properties to receive via API on update
+# Properties to receive via API on update (general user update)
 class UserUpdate(BaseModel):
     username: Optional[str] = Field(None, min_length=3, max_length=50)
     email: Optional[EmailStr] = None
-    password: Optional[str] = Field(None, min_length=8)
+    # Note: We typically don't update password via this generic update schema directly
+    # password: Optional[str] = Field(None, min_length=8) 
     preferred_timezone: Optional[str] = None
     is_active: Optional[bool] = None
     is_superuser: Optional[bool] = None
+
+# --- NEW SCHEMA FOR PASSWORD CHANGE ---
+class UserPasswordChange(BaseModel):
+    new_password: str = Field(..., min_length=8)
+    # current_password: Optional[str] = None # Optional: if we want to verify current pass
 
 # Properties stored in DB, includes hashed_password
 class UserInDBBase(UserBase):
@@ -38,4 +45,5 @@ class UserInDB(UserInDBBase):
 
 # Properties to return to client (never return hashed_password)
 class User(UserInDBBase):
-    pass # Inherits all from UserInDBBase, excluding hashed_password by not defining it here
+    pass
+
