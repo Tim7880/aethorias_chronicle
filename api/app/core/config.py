@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     # JWT settings (for authentication later)
     SECRET_KEY: str = "a_very_secret_key_that_should_be_in_env_variable" # CHANGE THIS!
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30 # Token expiry time
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440 # Token expiry time
 
     class Config:
         env_file = ".env" # If you want to use a .env file for overrides

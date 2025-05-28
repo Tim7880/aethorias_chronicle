@@ -10,7 +10,7 @@ from app.models.user import User as UserModel # For current_user dependency
 from app.routers.auth import get_current_active_user # For authentication
 
 router = APIRouter(
-    prefix="/api/v1/items",
+    prefix="/items",
     tags=["Items"],
     # Listing items might be public in some apps, but for consistency, let's keep it authenticated for now.
     # This can be easily changed by removing the dependency.

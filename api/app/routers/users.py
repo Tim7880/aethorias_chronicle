@@ -10,7 +10,7 @@ from app.models.user import User as UserModel
 from app.routers.auth import get_current_active_user
 
 router = APIRouter(
-    prefix="/api/v1/users", 
+    prefix="/users", 
     tags=["Users"]         
 )
 

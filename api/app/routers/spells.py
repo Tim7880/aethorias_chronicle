@@ -10,7 +10,7 @@ from app.models.user import User as UserModel # For current_user dependency
 from app.routers.auth import get_current_active_user # For authentication
 
 router = APIRouter(
-    prefix="/api/v1/spells", # Using the /api/v1 prefix consistent with other routers
+    prefix="/spells", # Using the /api/v1 prefix consistent with other routers
     tags=["Spells"],
     # Listing spells might be public in some apps, but let's keep it authenticated for now.
     dependencies=[Depends(get_current_active_user)] 

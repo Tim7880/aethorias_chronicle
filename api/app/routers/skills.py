@@ -10,7 +10,7 @@ from app.models.user import User as UserModel # For current_user dependency if r
 from app.routers.auth import get_current_active_user # For authentication
 
 router = APIRouter(
-    prefix="/api/v1/skills",
+    prefix="/skills",
     tags=["Skills"],
     # For now, listing skills will also require authentication for consistency.
     # This could be removed if skills are considered public data.
