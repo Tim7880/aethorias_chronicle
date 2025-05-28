@@ -29,7 +29,9 @@ from app.models.campaign_member import CampaignMember
 from app.models.skill import Skill
 from app.models.character_skill import CharacterSkill
 from app.models.item import Item  # <--- ADDED IMPORT
-from app.models.character_item import CharacterItem  # <--- ADDED IMPORT
+from app.models.character_item import CharacterItem 
+from app.models.spell import Spell
+from app.models.character_spell import CharacterSpell
 
 target_metadata = AppBase.metadata
 # --- End Aethoria's Chronicle Specific ---
