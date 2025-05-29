@@ -185,10 +185,10 @@ class CharacterUpdate(BaseModel): # All fields optional
         # cannot enforce tier-specific limits for other fields without knowing the original tier.
         # So, we only apply strict validation here if is_ascended_tier is provided in the update.
         if effective_is_ascended is not None:
-            max_level = 50 if effective_is_ascended else 30
-            max_stat_value = 50 if effective_is_ascended else 30
-            max_ac_allowed = 80 if effective_is_ascended else 40 
-            max_hp_allowed = 2500 if effective_is_ascended else 700
+            max_level = 200 if effective_is_ascended else 30
+            max_stat_value = 100 if effective_is_ascended else 30
+            max_ac_allowed = 500 if effective_is_ascended else 40 
+            max_hp_allowed = 9000 if effective_is_ascended else 700
 
             if data.level is not None and not (1 <= data.level <= max_level):
                 raise ValueError(f"Level ({data.level}) must be between 1 and {max_level} for this tier status ({effective_is_ascended}).")
