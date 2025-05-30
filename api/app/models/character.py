@@ -1,5 +1,6 @@
 # Path: api/app/models/character.py
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, func, JSON, Boolean # <--- ADD Boolean
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, func, JSON, Boolean
+import sqlalchemy as sa
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import expression # For server_default with Boolean
 from app.db.base_class import Base
@@ -10,7 +11,7 @@ if TYPE_CHECKING:
     from .campaign_member import CampaignMember
     from .character_skill import CharacterSkill
     from .character_item import CharacterItem
-    from .character_spell import CharacterSpell # Assuming you have this
+    from .character_spell import CharacterSpell
 
 class Character(Base):
     __tablename__ = "characters"
@@ -20,14 +21,14 @@ class Character(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
     race = Column(String(50), nullable=True)
-    character_class = Column(String(50), nullable=True) # We'll use this to set hit_die_type
+    character_class = Column(String(50), nullable=True)
     level = Column(Integer, default=1, nullable=False)
     experience_points = Column(Integer, default=0, nullable=True)
     alignment = Column(String(50), nullable=True)
 
     background_story = Column(Text, nullable=True)
     appearance_description = Column(Text, nullable=True)
-    is_ascended_tier = Column(Boolean, default=False, nullable=False) # Your existing field
+    is_ascended_tier = Column(Boolean, default=False, nullable=False, server_default=expression.false()) # Added server_default here too
 
     strength = Column(Integer, default=10, nullable=False)
     dexterity = Column(Integer, default=10, nullable=False)
@@ -40,25 +41,20 @@ class Character(Base):
     hit_points_max = Column(Integer, nullable=True)
     armor_class = Column(Integer, nullable=True)
 
-    # --- NEW FIELDS for Leveling Up ---
-    hit_die_type = Column(Integer, nullable=True) # e.g., 6 (for d6), 8 (d8), 10 (d10), 12 (d12)
+    # --- Fields for Hit Dice, Death Saves, and Leveling Up ---
+    hit_die_type = Column(Integer, nullable=True) # e.g., 6 (d6), 8 (d8), 10 (d10), 12 (d12) - will be set based on class
+    hit_dice_total = Column(Integer, default=1, nullable=False, server_default=sa.text('1')) # Starts with 1, same as level
+    hit_dice_remaining = Column(Integer, default=1, nullable=False, server_default=sa.text('1')) # Starts full
+
+    death_save_successes = Column(Integer, default=0, nullable=False, server_default=sa.text('0'))
+    death_save_failures = Column(Integer, default=0, nullable=False, server_default=sa.text('0'))
+
     has_pending_level_up = Column(Boolean, default=False, nullable=False, server_default=expression.false())
     # --- END NEW FIELDS ---
 
-    inventory_items = relationship( # Corrected from inventory = Column(JSON, nullable=True)
+    inventory_items = relationship(
         "CharacterItem",
         back_populates="character_owner",
-        cascade="all, delete-orphan"
-    )
-
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
-    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
-
-    owner = relationship("User", back_populates="characters")
-
-    campaign_participations = relationship(
-        "CampaignMember", 
-        back_populates="character",
         cascade="all, delete-orphan"
     )
 
@@ -68,9 +64,19 @@ class Character(Base):
         cascade="all, delete-orphan"
     )
 
-    known_spells = relationship( # Assuming you added this relationship
+    known_spells = relationship(
         "CharacterSpell",
         back_populates="character_owner",
+        cascade="all, delete-orphan"
+    )
+
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    owner = relationship("User", back_populates="characters")
+    campaign_participations = relationship(
+        "CampaignMember", 
+        back_populates="character",
         cascade="all, delete-orphan"
     )
 

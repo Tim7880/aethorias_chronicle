@@ -1,8 +1,9 @@
 # Path: api/app/crud/crud_character.py
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete, update
+from sqlalchemy import select
 from sqlalchemy.orm import selectinload
-from typing import List, Optional
+from typing import List, Optional, Tuple
+import random
 
 from app.models.character import Character as CharacterModel
 from app.models.skill import Skill as SkillModel
@@ -10,71 +11,93 @@ from app.models.character_skill import CharacterSkill as CharacterSkillModel
 from app.models.item import Item as ItemModel
 from app.models.character_item import CharacterItem as CharacterItemModel
 from app.models.spell import Spell as SpellModel
-from app.models.character_spell import CharacterSpell as CharacterSpellModel # Assuming you have this model
+from app.models.character_spell import CharacterSpell as CharacterSpellModel
 
 from app.schemas.character import CharacterCreate as CharacterCreateSchema
 from app.schemas.character import CharacterUpdate as CharacterUpdateSchema
-from app.schemas.skill import CharacterSkillCreate as CharacterSkillCreateSchema # Used by skill assignment
+from app.schemas.skill import CharacterSkillCreate as CharacterSkillCreateSchema
 from app.schemas.item import CharacterItemCreate as CharacterItemCreateSchema
 from app.schemas.item import CharacterItemUpdate as CharacterItemUpdateSchema
-from app.schemas.character_spell import CharacterSpellCreate, CharacterSpellUpdate # Assuming you have these
+from app.schemas.character_spell import CharacterSpellCreate, CharacterSpellUpdate
+from app.schemas.admin import AdminCharacterProgressionUpdate # <--- NEW SCHEMA IMPORT
 
-# --- XP and Leveling Definitions ---
-# D&D 5e Standard XP Thresholds for Levels 1-20
-XP_THRESHOLDS = {
+XP_THRESHOLDS = { 
+    # ... (your extended XP_THRESHOLDS dictionary) ...
     1: 0, 2: 300, 3: 900, 4: 2700, 5: 6500, 6: 14000, 7: 23000, 8: 34000,
     9: 48000, 10: 64000, 11: 85000, 12: 100000, 13: 120000, 14: 140000,
-    15: 165000, 16: 195000, 17: 225000, 18: 265000, 19: 305000, 20: 355000
+    15: 165000, 16: 195000, 17: 225000, 18: 265000, 19: 305000, 20: 355000,
+    21: 410000, 22: 470000, 23: 535000, 24: 605000, 25: 680000,
+    26: 760000, 27: 845000, 28: 935000, 29: 1030000, 30: 1130000,
+    31: 1240000, 32: 1360000, 33: 1490000, 34: 1630000, 35: 1780000,
+    36: 1940000, 37: 2110000, 38: 2290000, 39: 2480000, 40: 2680000,
+    41: 2900000, 42: 3140000, 43: 3400000, 44: 3680000, 45: 3980000,
+    46: 4300000, 47: 4640000, 48: 5000000, 49: 5380000, 50: 5780000
 }
-# Note: Your CharacterBase schema has level validation up to 30 (or 50 for ascended).
-# This XP_THRESHOLDS dict only covers standard 5e progression to 20.
-# For levels beyond 20, a different XP progression or direct level setting would be needed.
 
-def get_level_for_xp(xp: int, is_ascended_tier: bool = False) -> int:
-    """Determines character level based on XP."""
-    # For now, ascended tier doesn't change XP thresholds, only max level.
-    # This can be expanded if ascended characters have different XP progression.
+CLASS_HIT_DIE_MAP = {
+    # ... (your CLASS_HIT_DIE_MAP) ...
+    "artificer": 8, "barbarian": 12, "bard": 8, "cleric": 8, "druid": 8,
+    "fighter": 10, "monk": 8, "paladin": 10, "ranger": 10, "rogue": 8,
+    "sorcerer": 6, "warlock": 8, "wizard": 6
+}
+
+def get_level_for_xp(xp: int, is_ascended_tier: bool = False) -> int: # ... (as before) ...
     current_level = 0
     for level, threshold in XP_THRESHOLDS.items():
-        if xp >= threshold:
-            current_level = level
-        else:
-            break 
-    
-    # Ensure level is at least 1, and respects tier-based max if we enforce it here
-    # For now, just calculate based on standard XP up to 20.
-    # Max level validation is primarily in Pydantic schemas.
+        if xp >= threshold: current_level = level
+        else: break 
     return max(1, current_level)
 
-# --- Character Core CRUD ---
-async def create_character_for_user(
+def get_xp_for_level(level: int) -> int:
+    """Returns the minimum XP required for a given level."""
+    return XP_THRESHOLDS.get(level, 0) # Default to 0 if level not in map (e.g. > 50)
+
+def calculate_ability_modifier(score: Optional[int]) -> int: # ... (as before) ...
+    if score is None: return 0
+    return (score - 10) // 2
+
+async def create_character_for_user( # ... (as before, with hit_die_type logic) ...
     db: AsyncSession, character_in: CharacterCreateSchema, user_id: int
 ) -> CharacterModel:
     character_data = character_in.model_dump() 
-    
-    # Ensure level is consistent with XP if XP is provided, or default level if XP is 0/None
-    # The CharacterBase schema defaults level to 1 and XP to 0.
-    # If user provides XP, calculate level. If they provide level but not XP, it might be inconsistent.
-    # Pydantic validator on CharacterBase should handle tier-based max level.
+    hit_die_type_value = None
+    if character_data.get("character_class"):
+        hit_die_type_value = CLASS_HIT_DIE_MAP.get(character_data["character_class"].lower())
+    character_data["hit_die_type"] = hit_die_type_value
+
     if character_data.get("experience_points") is not None:
-        character_data["level"] = get_level_for_xp(
-            character_data["experience_points"], 
-            character_data.get("is_ascended_tier", False)
-        )
-    elif character_data.get("level") is None: # If level is not in payload, default to 1
+        character_data["level"] = get_level_for_xp(character_data["experience_points"], character_data.get("is_ascended_tier", False))
+    elif character_data.get("level") is None:
          character_data["level"] = 1
-    # If level is in payload but XP is not, the provided level is used.
-    # The Pydantic model_validator will check if this level is valid for the tier.
+
+    initial_level = character_data["level"]
+    character_data["hit_dice_total"] = initial_level
+    character_data["hit_dice_remaining"] = initial_level
+    character_data["death_save_successes"] = character_data.get("death_save_successes", 0) # From schema default
+    character_data["death_save_failures"] = character_data.get("death_save_failures", 0) # From schema default
+    character_data["has_pending_level_up"] = character_data.get("has_pending_level_up", False) # From schema default
+
+    # Initial HP calculation
+    if character_data.get("hit_points_max") is None and hit_die_type_value and character_data.get("constitution") is not None:
+        con_modifier = calculate_ability_modifier(character_data["constitution"])
+        if initial_level == 1:
+            character_data["hit_points_max"] = hit_die_type_value + con_modifier
+        else: # For characters created at higher than level 1
+            hp = hit_die_type_value + con_modifier # HP for level 1
+            for _ in range(2, initial_level + 1): # HP for subsequent levels (average)
+                hp += max(1, (hit_die_type_value // 2) + 1 + con_modifier)
+            character_data["hit_points_max"] = hp
+
+    if character_data.get("hit_points_max") is not None and character_data.get("hit_points_current") is None:
+        character_data["hit_points_current"] = character_data["hit_points_max"]
 
     db_character = CharacterModel(**character_data, user_id=user_id)
     db.add(db_character)
     await db.commit()
     await db.refresh(db_character)
-    # Re-fetch with all relationships for a consistent response object
     return await get_character(db, db_character.id)
 
-
-async def get_character(db: AsyncSession, character_id: int) -> Optional[CharacterModel]:
+async def get_character(db: AsyncSession, character_id: int) -> Optional[CharacterModel]: # ... (as before) ...
     result = await db.execute(
         select(CharacterModel)
         .options(
@@ -86,7 +109,7 @@ async def get_character(db: AsyncSession, character_id: int) -> Optional[Charact
     )
     return result.scalars().first()
 
-async def get_characters_by_user(
+async def get_characters_by_user( # ... (as before) ...
     db: AsyncSession, user_id: int, skip: int = 0, limit: int = 100
 ) -> List[CharacterModel]:
     result = await db.execute(
@@ -103,271 +126,203 @@ async def get_characters_by_user(
     )
     return result.scalars().all()
 
-async def update_character(
+async def update_character( # ... (as before, with hit_die_type update logic) ...
     db: AsyncSession, character: CharacterModel, character_in: CharacterUpdateSchema
 ) -> CharacterModel:
     update_data = character_in.model_dump(exclude_unset=True)
-    
-    # If XP is being updated, recalculate and update the level
-    if "experience_points" in update_data and update_data["experience_points"] is not None:
-        # Determine the tier for level calculation (use current character's tier if not in update_data)
-        effective_is_ascended = update_data.get("is_ascended_tier", character.is_ascended_tier)
-        new_level_from_xp = get_level_for_xp(update_data["experience_points"], effective_is_ascended)
-        
-        # Only update level from XP if it's different or if level isn't also being explicitly set
-        # to something else in this same update.
-        # If 'level' is also in update_data, Pydantic validation on the full object (in router)
-        # should ensure consistency based on the final 'is_ascended_tier'.
-        # For now, let XP drive the level if XP is provided.
-        update_data["level"] = new_level_from_xp
-
-    # Apply all updates
+    if "character_class" in update_data and update_data["character_class"] is not None:
+        new_class_name_lower = update_data["character_class"].lower()
+        character.hit_die_type = CLASS_HIT_DIE_MAP.get(new_class_name_lower)
     for field, value in update_data.items():
-        setattr(character, field, value)
-    
+        if field == "character_class" and "hit_die_type" in update_data:
+            setattr(character, field, value)
+        elif field != "hit_die_type": # Prevent direct update if not via class change
+            setattr(character, field, value)
+    if character.hit_points_current is not None and character.hit_points_max is not None:
+        if character.hit_points_current > character.hit_points_max:
+            character.hit_points_current = character.hit_points_max
+    if character.hit_dice_remaining is not None and character.hit_dice_total is not None:
+         if character.hit_dice_remaining > character.hit_dice_total:
+            character.hit_dice_remaining = character.hit_dice_total
     db.add(character)
     await db.commit()
     await db.refresh(character)
-    # Re-fetch with all relationships for a consistent response object
     return await get_character(db, character.id)
 
-
-async def delete_character(
+async def delete_character( # ... (as before) ...
     db: AsyncSession, character_id: int, user_id: int 
 ) -> Optional[CharacterModel]:
     character_to_delete = await get_character(db=db, character_id=character_id) 
     if character_to_delete and character_to_delete.user_id == user_id:
-        await db.delete(character_to_delete) # Cascade should handle skills, items, spells associations
+        await db.delete(character_to_delete)
         await db.commit()
         return character_to_delete
     return None
 
-# --- Character Skill Management Functions (existing, ensure they are complete) ---
-async def get_character_skill_association(
-    db: AsyncSession, *, character_id: int, skill_id: int
-) -> Optional[CharacterSkillModel]:
-    result = await db.execute(
-        select(CharacterSkillModel).filter_by(character_id=character_id, skill_id=skill_id)
-    )
-    return result.scalars().first()
-
-async def assign_or_update_skill_proficiency_to_character(
-    db: AsyncSession, *, character_id: int, skill_id: int, is_proficient: bool
-) -> CharacterSkillModel:
-    skill_result = await db.execute(select(SkillModel).filter(SkillModel.id == skill_id))
-    if not skill_result.scalars().first():
-        raise ValueError(f"Skill with id {skill_id} not found.") 
-    db_char_skill = await get_character_skill_association(db=db, character_id=character_id, skill_id=skill_id)
-    if db_char_skill:
-        db_char_skill.is_proficient = is_proficient
-    else:
-        db_char_skill = CharacterSkillModel(
-            character_id=character_id, skill_id=skill_id, is_proficient=is_proficient
-        )
-    db.add(db_char_skill)
-    await db.commit()
-    await db.refresh(db_char_skill)
-    result_with_skill_def = await db.execute(
-        select(CharacterSkillModel)
-        .options(selectinload(CharacterSkillModel.skill_definition))
-        .filter(CharacterSkillModel.id == db_char_skill.id)
-    )
-    return result_with_skill_def.scalars().first()
-
-async def remove_skill_from_character(
-    db: AsyncSession, *, character_id: int, skill_id: int
-) -> Optional[CharacterSkillModel]:
-    db_char_skill_to_delete = await db.execute(
-        select(CharacterSkillModel)
-        .options(selectinload(CharacterSkillModel.skill_definition))
-        .filter_by(character_id=character_id, skill_id=skill_id)
-    )
-    db_char_skill = db_char_skill_to_delete.scalars().first()
-    if db_char_skill:
-        await db.delete(db_char_skill)
-        await db.commit()
-        return db_char_skill
-    return None
-
-# --- Character Inventory Item Management Functions (existing, ensure they are complete) ---
-async def get_character_inventory_item(
-    db: AsyncSession, *, character_id: int, item_id: int
-) -> Optional[CharacterItemModel]:
-    result = await db.execute(
-        select(CharacterItemModel).filter_by(character_id=character_id, item_id=item_id)
-    )
-    return result.scalars().first()
-
-async def add_item_to_character_inventory(
-    db: AsyncSession, *, character_id: int, item_in: CharacterItemCreateSchema
-) -> CharacterItemModel:
-    item_definition_res = await db.execute(select(ItemModel).filter(ItemModel.id == item_in.item_id))
-    if not item_definition_res.scalars().first():
-        raise ValueError(f"Item with ID {item_in.item_id} not found.")
-    db_character_item = await get_character_inventory_item(
-        db=db, character_id=character_id, item_id=item_in.item_id
-    )
-    if db_character_item:
-        db_character_item.quantity += item_in.quantity
-    else:
-        db_character_item = CharacterItemModel(
-            character_id=character_id,
-            item_id=item_in.item_id,
-            quantity=item_in.quantity,
-            is_equipped=item_in.is_equipped
-        )
-    db.add(db_character_item)
-    await db.commit()
-    await db.refresh(db_character_item)
-    result_with_item_def = await db.execute(
-        select(CharacterItemModel)
-        .options(selectinload(CharacterItemModel.item_definition))
-        .filter(CharacterItemModel.id == db_character_item.id)
-    )
-    return result_with_item_def.scalars().first()
-
-async def update_character_inventory_item(
-    db: AsyncSession, *, character_item_id: int, item_in: CharacterItemUpdateSchema, character_id: int
-) -> Optional[CharacterItemModel]:
-    result = await db.execute(
-        select(CharacterItemModel)
-        .options(selectinload(CharacterItemModel.item_definition))
-        .filter(CharacterItemModel.id == character_item_id, CharacterItemModel.character_id == character_id)
-    )
-    db_character_item = result.scalars().first()
-    if not db_character_item:
-        return None
-    update_data = item_in.model_dump(exclude_unset=True)
-    for field, value in update_data.items():
-        setattr(db_character_item, field, value)
-    if db_character_item.quantity <= 0:
-        await db.delete(db_character_item)
-        await db.commit()
-        return None 
-    else:
-        db.add(db_character_item)
-        await db.commit()
-        await db.refresh(db_character_item)
-        return db_character_item
-
-async def remove_item_from_character_inventory(
-    db: AsyncSession, *, character_item_id: int, character_id: int
-) -> Optional[CharacterItemModel]:
-    result = await db.execute(
-        select(CharacterItemModel)
-        .options(selectinload(CharacterItemModel.item_definition))
-        .filter(CharacterItemModel.id == character_item_id, CharacterItemModel.character_id == character_id)
-    )
-    db_character_item = result.scalars().first()
-    if db_character_item:
-        await db.delete(db_character_item)
-        await db.commit()
-        return db_character_item
-    return None
-
-# --- Character Spell Management Functions (ensure these are present from your implementation) ---
-async def get_character_spell_association(
-    db: AsyncSession, *, character_id: int, spell_id: int
-) -> Optional[CharacterSpellModel]:
-    result = await db.execute(
-        select(CharacterSpellModel).filter_by(character_id=character_id, spell_id=spell_id)
-    )
-    return result.scalars().first()
-
-async def add_spell_to_character( # Ensure this is your version
-    db: AsyncSession, *, character_id: int, spell_association_in: CharacterSpellCreate
-) -> CharacterSpellModel:
-    spell_definition_res = await db.execute(select(SpellModel).filter(SpellModel.id == spell_association_in.spell_id))
-    if not spell_definition_res.scalars().first():
-        raise ValueError(f"Spell with ID {spell_association_in.spell_id} not found.")
-    
-    existing_association = await get_character_spell_association(
-        db=db, character_id=character_id, spell_id=spell_association_in.spell_id
-    )
-    if existing_association:
-        raise ValueError(f"Character already knows spell with ID {spell_association_in.spell_id}.")
-
-    db_character_spell = CharacterSpellModel(
-        character_id=character_id,
-        spell_id=spell_association_in.spell_id,
-        is_known=spell_association_in.is_known,
-        is_prepared=spell_association_in.is_prepared
-    )
-    db.add(db_character_spell)
-    await db.commit()
-    await db.refresh(db_character_spell)
-    result_with_spell_def = await db.execute(
-        select(CharacterSpellModel)
-        .options(selectinload(CharacterSpellModel.spell_definition))
-        .filter(CharacterSpellModel.id == db_character_spell.id)
-    )
-    return result_with_spell_def.scalars().first()
-
-async def update_character_spell_association( # Ensure this is your version
-    db: AsyncSession, *, character_id: int, spell_id: int, spell_association_update_in: CharacterSpellUpdate
-) -> Optional[CharacterSpellModel]:
-    result = await db.execute(
-        select(CharacterSpellModel)
-        .options(selectinload(CharacterSpellModel.spell_definition))
-        .filter(CharacterSpellModel.character_id == character_id, CharacterSpellModel.spell_id == spell_id)
-    )
-    db_character_spell = result.scalars().first()
-    if not db_character_spell: return None
-    update_data = spell_association_update_in.model_dump(exclude_unset=True)
-    if not update_data: return db_character_spell
-    for field, value in update_data.items():
-        setattr(db_character_spell, field, value)
-    db.add(db_character_spell)
-    await db.commit()
-    await db.refresh(db_character_spell)
-    return db_character_spell
-
-async def remove_spell_from_character( # Ensure this is your version
-    db: AsyncSession, *, character_id: int, spell_id: int
-) -> Optional[CharacterSpellModel]:
-    db_char_spell_to_delete = await db.execute(
-        select(CharacterSpellModel)
-        .options(selectinload(CharacterSpellModel.spell_definition))
-        .filter_by(character_id=character_id, spell_id=spell_id)
-    )
-    db_character_spell = db_char_spell_to_delete.scalars().first()
-    if db_character_spell:
-        await db.delete(db_character_spell)
-        await db.commit()
-        return db_character_spell
-    return None
-
-# --- NEW FUNCTION for awarding XP and handling level up ---
-async def award_xp_to_character(
+async def award_xp_to_character( # ... (as before) ...
     db: AsyncSession, *, character: CharacterModel, xp_to_add: int
 ) -> CharacterModel:
-    """
-    Awards XP to a character and updates their level if a new threshold is met.
-    """
     if xp_to_add <= 0:
-        # It's better to raise an error for invalid input that the API layer can catch
         raise ValueError("XP to award must be a positive integer.")
-
     current_xp = character.experience_points if character.experience_points is not None else 0
     character.experience_points = current_xp + xp_to_add
-    
     new_level = get_level_for_xp(character.experience_points, character.is_ascended_tier)
-    
     if new_level > character.level:
         print(f"Character {character.name} (ID: {character.id}) leveled up from {character.level} to {new_level}!")
+        character.hit_dice_total = new_level 
+        character.hit_dice_remaining = new_level 
         character.level = new_level
-        # TODO: Future - Trigger actual level-up process:
-        # - HP increase based on class and CON
-        # - Flag for ASI choices if applicable at this level
-        # - Flag for new spell choices for casters
-        # - Granting new class features
-        # For now, only the level number is updated.
-
-    db.add(character) # Mark character as dirty for update
+        character.has_pending_level_up = True 
+        print(f"Character {character.name} is now level {character.level} and has a pending level-up.")
+    db.add(character)
     await db.commit()
     await db.refresh(character)
-    
-    # Re-fetch with all relationships for a consistent response object from the API
     return await get_character(db, character.id)
 
+async def confirm_level_up_hp_increase( # ... (as before) ...
+    db: AsyncSession, *, character: CharacterModel, method: str = "average"
+) -> Tuple[CharacterModel, int]:
+    if not character.has_pending_level_up:
+        raise ValueError("Character does not have a pending level up to confirm HP for.")
+    if not character.hit_die_type:
+        raise ValueError("Character hit_die_type is not set. Cannot calculate HP.")
+    con_modifier = calculate_ability_modifier(character.constitution)
+    hp_gained_from_die = 0
+    if method == "average":
+        hp_gained_from_die = (character.hit_die_type // 2) + 1
+    elif method == "roll":
+        hp_gained_from_die = random.randint(1, character.hit_die_type)
+    else:
+        raise ValueError("Invalid HP increase method. Choose 'average' or 'roll'.")
+    hp_gained_this_level = max(1, hp_gained_from_die + con_modifier)
+    current_max_hp = character.hit_points_max if character.hit_points_max is not None else 0
+    character.hit_points_max = current_max_hp + hp_gained_this_level
+    current_hp = character.hit_points_current if character.hit_points_current is not None else 0
+    character.hit_points_current = min(current_hp + hp_gained_this_level, character.hit_points_max)
+    character.has_pending_level_up = False 
+    db.add(character)
+    await db.commit()
+    await db.refresh(character)
+    updated_character = await get_character(db, character.id)
+    if not updated_character: 
+        raise Exception("Failed to reload character after HP increase.")
+    return updated_character, hp_gained_this_level
+
+async def spend_character_hit_die( # ... (as before) ...
+    db: AsyncSession, *, character: CharacterModel, dice_roll_result: int
+) -> CharacterModel:
+    if character.hit_dice_remaining is None or character.hit_dice_remaining <= 0:
+        raise ValueError("No hit dice remaining to spend.")
+    if not character.hit_die_type:
+        raise ValueError("Character hit_die_type is not set.")
+    con_modifier = calculate_ability_modifier(character.constitution)
+    hp_healed = max(1, dice_roll_result + con_modifier)
+    character.hit_dice_remaining -= 1
+    current_hp = character.hit_points_current if character.hit_points_current is not None else 0
+    max_hp = character.hit_points_max if character.hit_points_max is not None else current_hp
+    character.hit_points_current = min(current_hp + hp_healed, max_hp)
+    db.add(character)
+    await db.commit()
+    await db.refresh(character)
+    return await get_character(db, character.id)
+
+async def record_death_save( # ... (as before) ...
+    db: AsyncSession, *, character: CharacterModel, success: bool
+) -> CharacterModel:
+    if success:
+        current_successes = character.death_save_successes if character.death_save_successes is not None else 0
+        character.death_save_successes = min(current_successes + 1, 3)
+    else:
+        current_failures = character.death_save_failures if character.death_save_failures is not None else 0
+        character.death_save_failures = min(current_failures + 1, 3)
+    if character.death_save_successes >= 3 or character.death_save_failures >= 3:
+        character.death_save_successes = 0
+        character.death_save_failures = 0
+    db.add(character)
+    await db.commit()
+    await db.refresh(character)
+    return await get_character(db, character.id)
+
+async def reset_death_saves(db: AsyncSession, *, character: CharacterModel) -> CharacterModel: # ... (as before) ...
+    character.death_save_successes = 0
+    character.death_save_failures = 0
+    db.add(character)
+    await db.commit()
+    await db.refresh(character)
+    return await get_character(db, character.id)
+
+# --- NEW ADMIN FUNCTION for setting character progression ---
+async def admin_update_character_progression(
+    db: AsyncSession, 
+    *, 
+    character: CharacterModel, 
+    progression_in: AdminCharacterProgressionUpdate
+) -> CharacterModel:
+    """
+    Admin function to directly set a character's level and/or XP.
+    Resets HP and Hit Dice according to the new level if level is changed.
+    """
+    updated = False
+
+    if progression_in.level is not None:
+        # Validate level against character's tier (using Pydantic validator for CharacterBase as reference)
+        max_level = 50 if character.is_ascended_tier else 30
+        if not (1 <= progression_in.level <= max_level):
+            raise ValueError(f"Admin: Target level ({progression_in.level}) is outside the allowed range (1-{max_level}) for this character's tier.")
+
+        character.level = progression_in.level
+        character.experience_points = get_xp_for_level(character.level) # Set XP to minimum for that level
+
+        # Reset HP and Hit Dice for the new level
+        if character.hit_die_type and character.constitution is not None:
+            con_mod = calculate_ability_modifier(character.constitution)
+            # Calculate HP: Max at 1st level, average for subsequent levels
+            new_max_hp = character.hit_die_type + con_mod # For level 1
+            if character.level > 1:
+                # Add average HP for levels 2 through new_level
+                for _lvl in range(2, character.level + 1):
+                    new_max_hp += max(1, (character.hit_die_type // 2) + 1 + con_mod)
+            character.hit_points_max = new_max_hp
+            character.hit_points_current = new_max_hp # Full heal on admin level set
+
+        character.hit_dice_total = character.level
+        character.hit_dice_remaining = character.level
+        character.has_pending_level_up = False # Clear any pending state
+        updated = True
+
+    elif progression_in.experience_points is not None:
+        # Only XP is provided, level will be derived
+        character.experience_points = progression_in.experience_points
+        new_level = get_level_for_xp(character.experience_points, character.is_ascended_tier)
+
+        if new_level != character.level: # If this XP change also results in a level change
+            # This logic mirrors award_xp_to_character without the "pending" state for admin set.
+            character.level = new_level
+            character.hit_dice_total = new_level
+            character.hit_dice_remaining = new_level
+            # HP would need to be recalculated based on all new levels gained.
+            # This can become complex if multiple levels gained just from XP set.
+            # For simplicity of admin override, if XP sets a new level, we might also just reset HP like above.
+            if character.hit_die_type and character.constitution is not None:
+                con_mod = calculate_ability_modifier(character.constitution)
+                new_max_hp = character.hit_die_type + con_mod # Lvl 1
+                if character.level > 1:
+                    for _lvl in range(2, character.level + 1):
+                        new_max_hp += max(1, (character.hit_die_type // 2) + 1 + con_mod)
+                character.hit_points_max = new_max_hp
+                character.hit_points_current = new_max_hp
+            character.has_pending_level_up = False
+        updated = True
+
+    if updated:
+        db.add(character)
+        await db.commit()
+        await db.refresh(character)
+
+    return await get_character(db, character.id) # Return fully loaded character
+
+# Ensure your existing skill, inventory, and spell management functions are here too
+# ... (get_character_skill_association, assign_or_update_skill_proficiency_to_character, etc.) ...
+# ... (get_character_inventory_item, add_item_to_character_inventory, etc.) ...
+# ... (get_character_spell_association, add_spell_to_character, etc.) ...
 
