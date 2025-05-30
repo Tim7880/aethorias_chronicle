@@ -3,36 +3,48 @@ from pydantic import BaseModel, Field, model_validator, ConfigDict
 from typing import Optional, List, Any 
 from datetime import datetime
 
+# Assuming these are correctly defined in their respective schema files
 from .skill import CharacterSkill as CharacterSkillSchema
 from .item import CharacterItem as CharacterItemSchema
 from .character_spell import CharacterSpell as CharacterSpellSchema 
 
 class CharacterBase(BaseModel):
-    # ... (all existing fields in CharacterBase)
     name: str = Field(..., min_length=1, max_length=100)
     race: Optional[str] = Field(None, max_length=50)
     character_class: Optional[str] = Field(None, max_length=50)
+
     is_ascended_tier: bool = False
+
     level: Optional[int] = Field(1, ge=1) 
     experience_points: Optional[int] = Field(0, ge=0)
+
     alignment: Optional[str] = Field(None, max_length=50)
     background_story: Optional[str] = None
     appearance_description: Optional[str] = None
+
     strength: Optional[int] = Field(10, ge=1) 
     dexterity: Optional[int] = Field(10, ge=1)
     constitution: Optional[int] = Field(10, ge=1)
     intelligence: Optional[int] = Field(10, ge=1)
     wisdom: Optional[int] = Field(10, ge=1)
     charisma: Optional[int] = Field(10, ge=1)
+
     hit_points_max: Optional[int] = Field(None, ge=1) 
     hit_points_current: Optional[int] = None 
+
     armor_class: Optional[int] = Field(None) 
+
     hit_die_type: Optional[int] = Field(None, ge=6, le=12)
     hit_dice_total: Optional[int] = Field(1, ge=0)
     hit_dice_remaining: Optional[int] = Field(1, ge=0)
+
     death_save_successes: Optional[int] = Field(0, ge=0, le=3)
     death_save_failures: Optional[int] = Field(0, ge=0, le=3)
-    has_pending_level_up: Optional[bool] = False
+
+    # --- MODIFIED FIELD for Leveling Status ---
+    level_up_status: Optional[str] = Field(None, max_length=50) # e.g., "pending_hp", "pending_asi", or None
+    # Was: has_pending_level_up: Optional[bool] = False
+    # --- END MODIFIED FIELD ---
 
     @model_validator(mode='after')
     def check_stats_based_on_tier(cls, data):
@@ -43,6 +55,7 @@ class CharacterBase(BaseModel):
         max_stat_value = 50 if is_ascended else 30
         max_ac_allowed = 80 if is_ascended else 40 
         max_hp_allowed = 5000 if is_ascended else 700 
+
         if data.level is not None and not (1 <= data.level <= max_level):
             raise ValueError(f"Level ({data.level}) must be between 1 and {max_level} for this tier.")
         stats_to_check = [
@@ -66,10 +79,10 @@ class CharacterBase(BaseModel):
         return data
 
 class CharacterCreate(CharacterBase):
+    # level_up_status will default to None from CharacterBase if not provided
     pass
 
 class CharacterUpdate(BaseModel): 
-    # ... (CharacterUpdate as previously defined, without level/xp) ...
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     race: Optional[str] = Field(None, max_length=50)
     character_class: Optional[str] = Field(None, max_length=50) 
@@ -89,7 +102,11 @@ class CharacterUpdate(BaseModel):
     hit_dice_remaining: Optional[int] = Field(None, ge=0)
     death_save_successes: Optional[int] = Field(None, ge=0, le=3)
     death_save_failures: Optional[int] = Field(None, ge=0, le=3)
+    # level_up_status is not directly updatable by player via general update;
+    # it's managed by specific level-up process endpoints.
+
     model_config = ConfigDict(extra='forbid')
+
     @model_validator(mode='after')
     def check_update_stats_based_on_tier(cls, data):
         # ... (your existing validator for CharacterUpdate) ...
@@ -113,7 +130,6 @@ class CharacterUpdate(BaseModel):
                 raise ValueError(f"Max Hit Points ({data.hit_points_max}) cannot exceed {max_hp_allowed} for this tier status ({effective_is_ascended}).")
         return data
 
-
 class CharacterInDBBase(CharacterBase):
     id: int
     user_id: int 
@@ -122,6 +138,7 @@ class CharacterInDBBase(CharacterBase):
     skills: List[CharacterSkillSchema] = []
     inventory_items: List[CharacterItemSchema] = []
     known_spells: List[CharacterSpellSchema] = []
+    # level_up_status is inherited from CharacterBase and will be included in responses.
 
     class Config:
         from_attributes = True
@@ -132,7 +149,8 @@ class Character(CharacterInDBBase):
 class CharacterHPLevelUpRequest(BaseModel):
     method: str = Field("average", pattern="^(average|roll)$", description="Method to increase HP: 'average' or 'roll'")
 
-# --- NEW RESPONSE SCHEMA for HP Level Up ---
+# Add this class definition if it's missing in api/app/schemas/character.py
+
 class CharacterHPLevelUpResponse(BaseModel):
     character: Character # The updated character object
     hp_gained: int

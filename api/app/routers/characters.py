@@ -205,33 +205,36 @@ async def remove_item_from_inventory( # ... (existing code)
     return deleted_item_assoc
 
 
-# --- MODIFIED/NEW ENDPOINT for Leveling Up HP, Hit Dice, Death Saves ---
-@router.post("/{character_id}/level-up/confirm-hp", response_model=CharacterHPLevelUpResponse) # <--- USE NEW RESPONSE SCHEMA
+@router.post("/{character_id}/level-up/confirm-hp", response_model=CharacterHPLevelUpResponse)
 async def confirm_character_hp_on_level_up(
     character_id: int,
-    hp_request: CharacterHPLevelUpRequest, # Contains method: "average" or "roll"
+    hp_request: CharacterHPLevelUpRequest, 
     db: AsyncSession = Depends(get_db),
     current_user: UserModel = Depends(get_current_active_user)
 ):
     db_character = await crud_character.get_character(db=db, character_id=character_id)
-    if not db_character or db_character.user_id != current_user.id: # Only owner can confirm level up choices
+    if not db_character or db_character.user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND if not db_character else status.HTTP_403_FORBIDDEN,
                             detail="Character not found or not authorized")
 
-    if not db_character.has_pending_level_up:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Character does not have a pending level up for HP confirmation.")
+    # --- MODIFIED CHECK ---
+    if db_character.level_up_status != "pending_hp":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Character is not pending HP confirmation. Current status: {db_character.level_up_status}")
+    # --- END MODIFICATION ---
 
     try:
-        updated_character, hp_gained = await crud_character.confirm_level_up_hp_increase( # <--- GET TUPLE
+        updated_character, hp_gained = await crud_character.confirm_level_up_hp_increase(
             db=db, character=db_character, method=hp_request.method
         )
-        return CharacterHPLevelUpResponse( # <--- CONSTRUCT NEW RESPONSE
+        return CharacterHPLevelUpResponse(
             character=updated_character, 
             hp_gained=hp_gained,
             level_up_message=f"{updated_character.name} gained {hp_gained} HP upon reaching level {updated_character.level}!"
         )
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+# ... (rest of the router file) ...
 
 @router.post("/{character_id}/spend-hit-die", response_model=CharacterSchema)
 async def spend_character_hit_die_endpoint(
