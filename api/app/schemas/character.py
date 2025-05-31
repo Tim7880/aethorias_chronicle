@@ -1,61 +1,47 @@
 # Path: api/app/schemas/character.py
 from pydantic import BaseModel, Field, model_validator, ConfigDict
-from typing import Optional, List, Any 
+from typing import Optional, List, Any, Dict
 from datetime import datetime
 
-# Assuming these are correctly defined in their respective schema files
 from .skill import CharacterSkill as CharacterSkillSchema
 from .item import CharacterItem as CharacterItemSchema
 from .character_spell import CharacterSpell as CharacterSpellSchema 
 
 class CharacterBase(BaseModel):
+    # ... (CharacterBase as before) ...
     name: str = Field(..., min_length=1, max_length=100)
     race: Optional[str] = Field(None, max_length=50)
     character_class: Optional[str] = Field(None, max_length=50)
-
     is_ascended_tier: bool = False
-
     level: Optional[int] = Field(1, ge=1) 
     experience_points: Optional[int] = Field(0, ge=0)
-
     alignment: Optional[str] = Field(None, max_length=50)
     background_story: Optional[str] = None
     appearance_description: Optional[str] = None
-
     strength: Optional[int] = Field(10, ge=1) 
     dexterity: Optional[int] = Field(10, ge=1)
     constitution: Optional[int] = Field(10, ge=1)
     intelligence: Optional[int] = Field(10, ge=1)
     wisdom: Optional[int] = Field(10, ge=1)
     charisma: Optional[int] = Field(10, ge=1)
-
     hit_points_max: Optional[int] = Field(None, ge=1) 
     hit_points_current: Optional[int] = None 
-
     armor_class: Optional[int] = Field(None) 
-
     hit_die_type: Optional[int] = Field(None, ge=6, le=12)
     hit_dice_total: Optional[int] = Field(1, ge=0)
     hit_dice_remaining: Optional[int] = Field(1, ge=0)
-
     death_save_successes: Optional[int] = Field(0, ge=0, le=3)
     death_save_failures: Optional[int] = Field(0, ge=0, le=3)
-
-    # --- MODIFIED FIELD for Leveling Status ---
-    level_up_status: Optional[str] = Field(None, max_length=50) # e.g., "pending_hp", "pending_asi", or None
-    # Was: has_pending_level_up: Optional[bool] = False
-    # --- END MODIFIED FIELD ---
-
+    level_up_status: Optional[str] = Field(None, max_length=50)
     @model_validator(mode='after')
     def check_stats_based_on_tier(cls, data):
-        # ... (your existing validator logic)
+        # ... (your existing validator logic) ...
         if data is None: return data
         is_ascended = data.is_ascended_tier
         max_level = 50 if is_ascended else 30
         max_stat_value = 50 if is_ascended else 30
         max_ac_allowed = 80 if is_ascended else 40 
         max_hp_allowed = 5000 if is_ascended else 700 
-
         if data.level is not None and not (1 <= data.level <= max_level):
             raise ValueError(f"Level ({data.level}) must be between 1 and {max_level} for this tier.")
         stats_to_check = [
@@ -78,11 +64,12 @@ class CharacterBase(BaseModel):
                 raise ValueError(f"Remaining Hit Dice ({data.hit_dice_remaining}) cannot exceed Total Hit Dice ({data.hit_dice_total}).")
         return data
 
+
 class CharacterCreate(CharacterBase):
-    # level_up_status will default to None from CharacterBase if not provided
     pass
 
 class CharacterUpdate(BaseModel): 
+    # ... (CharacterUpdate as before) ...
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     race: Optional[str] = Field(None, max_length=50)
     character_class: Optional[str] = Field(None, max_length=50) 
@@ -102,11 +89,7 @@ class CharacterUpdate(BaseModel):
     hit_dice_remaining: Optional[int] = Field(None, ge=0)
     death_save_successes: Optional[int] = Field(None, ge=0, le=3)
     death_save_failures: Optional[int] = Field(None, ge=0, le=3)
-    # level_up_status is not directly updatable by player via general update;
-    # it's managed by specific level-up process endpoints.
-
     model_config = ConfigDict(extra='forbid')
-
     @model_validator(mode='after')
     def check_update_stats_based_on_tier(cls, data):
         # ... (your existing validator for CharacterUpdate) ...
@@ -138,7 +121,6 @@ class CharacterInDBBase(CharacterBase):
     skills: List[CharacterSkillSchema] = []
     inventory_items: List[CharacterItemSchema] = []
     known_spells: List[CharacterSpellSchema] = []
-    # level_up_status is inherited from CharacterBase and will be included in responses.
 
     class Config:
         from_attributes = True
@@ -149,10 +131,8 @@ class Character(CharacterInDBBase):
 class CharacterHPLevelUpRequest(BaseModel):
     method: str = Field("average", pattern="^(average|roll)$", description="Method to increase HP: 'average' or 'roll'")
 
-# Add this class definition if it's missing in api/app/schemas/character.py
-
 class CharacterHPLevelUpResponse(BaseModel):
-    character: Character # The updated character object
+    character: Character 
     hp_gained: int
     level_up_message: str
 
@@ -161,4 +141,55 @@ class SpendHitDieRequest(BaseModel):
 
 class RecordDeathSaveRequest(BaseModel):
     success: bool
+
+class ASISelectionRequest(BaseModel):
+    stat_increases: Dict[str, int] = Field(..., description="Dictionary of stats to increase and by how much. E.g., {'strength': 2} or {'dexterity': 1, 'constitution': 1}")
+    @model_validator(mode='after')
+    def check_asi_rules(cls, data):
+        # ... (your ASI validator as before) ...
+        if data is None or not data.stat_increases: raise ValueError("stat_increases must be provided and contain data.")
+        total_points_used = 0; stats_affected_count = 0
+        valid_stat_names = {"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"}
+        for stat, increase in data.stat_increases.items():
+            stat_lower = stat.lower()
+            if stat_lower not in valid_stat_names: raise ValueError(f"Invalid stat name provided: '{stat}'. Must be one of {valid_stat_names}.")
+            if increase not in [1, 2]: raise ValueError(f"Increase for {stat_lower} must be +1 or +2. Received: {increase}.")
+            total_points_used += increase; stats_affected_count += 1
+        if total_points_used != 2: raise ValueError(f"Total ability score increase must be +2 points. Used: {total_points_used}.")
+        if stats_affected_count == 1:
+            single_stat_increase_value = list(data.stat_increases.values())[0]
+            if single_stat_increase_value != 2: raise ValueError("If increasing only one stat, it must be by +2.")
+        elif stats_affected_count == 2:
+            for increase_val in data.stat_increases.values():
+                if increase_val != 1: raise ValueError("If increasing two stats, each must be by +1.")
+        elif stats_affected_count > 2: raise ValueError("Cannot increase more than two ability scores with a standard ASI.")
+        elif stats_affected_count == 0 and total_points_used != 2 : raise ValueError("stat_increases cannot be empty if total points used is not 2.")
+        return data
+
+
+# --- NEW SCHEMA for Sorcerer Spell Selection on Level Up ---
+class SorcererSpellSelectionRequest(BaseModel):
+    # Sorcerers learn one new spell of their choice when they level up (if spells known increases)
+    # This spell must be of a level for which they have spell slots.
+    new_spell_learned_id: Optional[int] = Field(None, description="ID of the new spell chosen to learn. Required if spells known increases.")
+
+    # Additionally, they can replace one known spell with another from the sorcerer spell list.
+    spell_to_replace_id: Optional[int] = Field(None, description="ID of a currently known spell to replace (optional).")
+    replacement_spell_id: Optional[int] = Field(None, description="ID of the new spell to learn in place of the replaced one (required if spell_to_replace_id is provided).")
+
+    @model_validator(mode='after')
+    def check_replacement_logic(cls, data):
+        if data is None: return data
+        if data.spell_to_replace_id is not None and data.replacement_spell_id is None:
+            raise ValueError("If replacing a spell, 'replacement_spell_id' must be provided.")
+        if data.spell_to_replace_id is None and data.replacement_spell_id is not None:
+            raise ValueError("If providing a replacement spell, 'spell_to_replace_id' must also be provided.")
+        if data.new_spell_learned_id is None and data.spell_to_replace_id is None:
+             # This check might be too strict if a level up doesn't grant a new spell AND they don't want to replace one.
+             # However, a sorcerer *usually* gains a spell known or can replace one.
+             # Let's assume at least one action (learn new or replace) is expected if spells_known increases or they choose to swap.
+             # The API endpoint logic will be more nuanced based on actual spells_known count.
+             # For now, this just ensures consistency if replacement is attempted.
+             pass # It's possible a level up doesn't grant a new spell and they don't replace.
+        return data
 
