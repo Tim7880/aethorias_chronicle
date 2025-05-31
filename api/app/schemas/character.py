@@ -1,42 +1,53 @@
 # Path: api/app/schemas/character.py
 from pydantic import BaseModel, Field, model_validator, ConfigDict
-from typing import Optional, List, Any, Dict
+from typing import Optional, List, Any, Dict 
 from datetime import datetime
 
+# Assuming these are correctly defined in their respective schema files
 from .skill import CharacterSkill as CharacterSkillSchema
 from .item import CharacterItem as CharacterItemSchema
 from .character_spell import CharacterSpell as CharacterSpellSchema 
+# Import the Enum for Roguish Archetype
+from app.game_data.rogue_data import RoguishArchetypeEnum # <--- NEW IMPORT
 
 class CharacterBase(BaseModel):
-    # ... (CharacterBase as before, including level_up_status) ...
     name: str = Field(..., min_length=1, max_length=100)
     race: Optional[str] = Field(None, max_length=50)
     character_class: Optional[str] = Field(None, max_length=50)
+    roguish_archetype: Optional[RoguishArchetypeEnum] = None # <--- NEW FIELD
+
     is_ascended_tier: bool = False
     level: Optional[int] = Field(1, ge=1) 
     experience_points: Optional[int] = Field(0, ge=0)
+
     alignment: Optional[str] = Field(None, max_length=50)
     background_story: Optional[str] = None
     appearance_description: Optional[str] = None
+
     strength: Optional[int] = Field(10, ge=1) 
     dexterity: Optional[int] = Field(10, ge=1)
     constitution: Optional[int] = Field(10, ge=1)
     intelligence: Optional[int] = Field(10, ge=1)
     wisdom: Optional[int] = Field(10, ge=1)
     charisma: Optional[int] = Field(10, ge=1)
+
     hit_points_max: Optional[int] = Field(None, ge=1) 
     hit_points_current: Optional[int] = None 
+
     armor_class: Optional[int] = Field(None) 
+
     hit_die_type: Optional[int] = Field(None, ge=6, le=12)
     hit_dice_total: Optional[int] = Field(1, ge=0)
     hit_dice_remaining: Optional[int] = Field(1, ge=0)
+
     death_save_successes: Optional[int] = Field(0, ge=0, le=3)
     death_save_failures: Optional[int] = Field(0, ge=0, le=3)
+
     level_up_status: Optional[str] = Field(None, max_length=50)
 
     @model_validator(mode='after')
     def check_stats_based_on_tier(cls, data):
-        # ... (your existing validator logic) ...
+        # ... (your existing validator logic - no change needed here for archetype) ...
         if data is None: return data
         is_ascended = data.is_ascended_tier
         max_level = 50 if is_ascended else 30
@@ -68,13 +79,15 @@ class CharacterBase(BaseModel):
 class CharacterCreate(CharacterBase):
     chosen_cantrip_ids: Optional[List[int]] = Field(None, description="List of spell IDs for initial cantrips (e.g., for Sorcerers at L1).")
     chosen_initial_spell_ids: Optional[List[int]] = Field(None, description="List of spell IDs for initial L1 spells known (e.g., for Sorcerers at L1).")
-    # Expertise choices will be handled after creation via a specific endpoint if character is L1 Rogue
+    # roguish_archetype will default to None from CharacterBase. 
+    # It's chosen at L3 via a specific level-up endpoint.
 
 class CharacterUpdate(BaseModel): 
-    # ... (CharacterUpdate as before - without level, xp, hit_die_type, hit_dice_total, level_up_status) ...
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     race: Optional[str] = Field(None, max_length=50)
     character_class: Optional[str] = Field(None, max_length=50) 
+    # roguish_archetype is not directly updatable here by player; managed by level-up choice.
+    # An admin might be able to change it via a different mechanism if needed.
     is_ascended_tier: Optional[bool] = None
     alignment: Optional[str] = Field(None, max_length=50)
     background_story: Optional[str] = None
@@ -91,7 +104,9 @@ class CharacterUpdate(BaseModel):
     hit_dice_remaining: Optional[int] = Field(None, ge=0)
     death_save_successes: Optional[int] = Field(None, ge=0, le=3)
     death_save_failures: Optional[int] = Field(None, ge=0, le=3)
+
     model_config = ConfigDict(extra='forbid')
+
     @model_validator(mode='after')
     def check_update_stats_based_on_tier(cls, data):
         # ... (your existing validator for CharacterUpdate) ...
@@ -120,9 +135,10 @@ class CharacterInDBBase(CharacterBase):
     user_id: int 
     created_at: datetime
     updated_at: datetime
-    skills: List[CharacterSkillSchema] = [] # CharacterSkillSchema now includes has_expertise
+    skills: List[CharacterSkillSchema] = []
     inventory_items: List[CharacterItemSchema] = []
     known_spells: List[CharacterSpellSchema] = []
+    # roguish_archetype is inherited from CharacterBase and will be included here
 
     class Config:
         from_attributes = True
@@ -130,6 +146,7 @@ class CharacterInDBBase(CharacterBase):
 class Character(CharacterInDBBase):
     pass
 
+# --- Schemas for Leveling Up and Character State Management ---
 class CharacterHPLevelUpRequest(BaseModel):
     method: str = Field("average", pattern="^(average|roll)$", description="Method to increase HP: 'average' or 'roll'")
 
@@ -181,16 +198,17 @@ class SorcererSpellSelectionRequest(BaseModel):
             raise ValueError("If providing a replacement spell ('replacement_spell_id'), 'spell_to_replace_id' must also be provided to indicate which spell is being replaced.")
         return data
 
-# --- NEW SCHEMA for Expertise Selection ---
 class ExpertiseSelectionRequest(BaseModel):
-    # Rogue chooses two proficiencies (skills, or one skill and thieves' tools)
-    # For MVP, let's support choosing two SKILL IDs they are already proficient in.
     expert_skill_ids: List[int] = Field(..., min_length=2, max_length=2, description="List of exactly two unique skill IDs to gain expertise in. Character must be proficient in these skills.")
-
     @model_validator(mode='after')
-    def check_distinct_skills(cls, data):
-        if data is None or data.expert_skill_ids is None: # Should be caught by min_length if None
-            return data 
+    def check_distinct_skills(cls, data): # ... (validator as before) ...
+        if data is None or data.expert_skill_ids is None: return data 
         if len(data.expert_skill_ids) != len(set(data.expert_skill_ids)):
             raise ValueError("Chosen skill IDs for expertise must be unique.")
         return data
+
+# --- NEW SCHEMA for Rogue Archetype Selection ---
+class RogueArchetypeSelectionRequest(BaseModel):
+    archetype_name: RoguishArchetypeEnum # Player chooses one from the Enum
+
+    

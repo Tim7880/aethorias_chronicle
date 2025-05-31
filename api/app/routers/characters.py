@@ -11,7 +11,8 @@ from app.schemas.character import (
     SpendHitDieRequest, RecordDeathSaveRequest,
     ASISelectionRequest,
     SorcererSpellSelectionRequest,
-    ExpertiseSelectionRequest # <--- IMPORT NEW EXPERTISE SCHEMA
+    ExpertiseSelectionRequest,
+    RogueArchetypeSelectionRequest # <--- IMPORT NEW EXPERTISE SCHEMA
 )
 from app.schemas.skill import CharacterSkill as CharacterSkillSchema
 from app.schemas.skill import CharacterSkillCreate
@@ -62,7 +63,7 @@ async def read_characters_for_user(
     db: AsyncSession = Depends(get_db),
     current_user: UserModel = Depends(get_current_active_user),
     skip: int = 0,
-    limit: int = 100
+    limit: int = 1000
 ):
     characters = await crud_character.get_characters_by_user(
         db=db, user_id=current_user.id, skip=skip, limit=limit
@@ -408,6 +409,36 @@ async def select_rogue_expertise_on_level_up(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 # --- END NEW EXPERTISE ENDPOINT ---
 
+@router.post("/{character_id}/level-up/select-archetype", response_model=CharacterSchema)
+async def select_rogue_archetype_on_level_up(
+    character_id: int,
+    archetype_in: RogueArchetypeSelectionRequest, # Request body schema
+    db: AsyncSession = Depends(get_db),
+    current_user: UserModel = Depends(get_current_active_user)
+):
+    """
+    Allows a player to select a Roguish Archetype for their Rogue character
+    when their character is pending archetype selection (typically at level 3).
+    """
+    db_character = await crud_character.get_character(db=db, character_id=character_id)
+    if not db_character or db_character.user_id != current_user.id: # Ownership check
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND if not db_character else status.HTTP_403_FORBIDDEN,
+                            detail="Character not found or not authorized")
+
+    if not db_character.character_class or db_character.character_class.lower() != "rogue":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Archetype selection is for Rogue characters only.")
+        
+    if db_character.level_up_status != "pending_archetype_selection":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Character is not pending archetype selection. Current status: {db_character.level_up_status}")
+
+    try:
+        updated_character = await crud_character.apply_rogue_archetype_selection(
+            db=db, character=db_character, archetype_selection=archetype_in
+        )
+        return updated_character
+    except ValueError as e: # Catch validation errors from CRUD
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+# --- END NEW ARCHETYPE ENDPOINT ---
 
 @router.post("/{character_id}/spend-hit-die", response_model=CharacterSchema)
 # ... (existing spend_character_hit_die_endpoint code) ...

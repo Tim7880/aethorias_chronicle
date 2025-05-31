@@ -18,9 +18,10 @@ from app.schemas.character import (
     CharacterUpdate as CharacterUpdateSchema,
     ASISelectionRequest,
     SorcererSpellSelectionRequest,
-    ExpertiseSelectionRequest # Added for Rogue Expertise
+    ExpertiseSelectionRequest,
+    RogueArchetypeSelectionRequest # Ensure this is imported
 )
-from app.schemas.skill import CharacterSkillCreate as CharacterSkillCreateSchema # For skill proficiency
+from app.schemas.skill import CharacterSkillCreate as CharacterSkillCreateSchema
 from app.schemas.item import CharacterItemCreate as CharacterItemCreateSchema
 from app.schemas.item import CharacterItemUpdate as CharacterItemUpdateSchema
 from app.schemas.character_spell import CharacterSpellCreate, CharacterSpellUpdate 
@@ -31,8 +32,9 @@ from app.game_data.sorcerer_progression import (
     SORCERER_SPELLS_KNOWN_TABLE,
     get_sorcerer_max_spell_level_can_learn
 )
+from app.game_data.rogue_data import RoguishArchetypeEnum, AVAILABLE_ROGUE_ARCHETYPES # For Rogue Archetype
 
-# --- XP, Leveling, ASI, Hit Dice, Expertise Definitions ---
+# --- XP, Leveling, ASI, Hit Dice, Expertise, Archetype Definitions ---
 XP_THRESHOLDS = { 
     1: 0, 2: 300, 3: 900, 4: 2700, 5: 6500, 6: 14000, 7: 23000, 8: 34000,
     9: 48000, 10: 64000, 11: 85000, 12: 100000, 13: 120000, 14: 140000,
@@ -57,7 +59,8 @@ CLASS_ASI_LEVELS_MAP: Dict[str, List[int]] = {
     "default": [4, 8, 12, 16, 19] 
 }
 
-ROGUE_EXPERTISE_LEVELS = [1, 6] # Levels Rogues gain Expertise
+ROGUE_EXPERTISE_LEVELS = [1, 6]
+ROGUE_ARCHETYPE_LEVEL = 3
 
 def get_level_for_xp(xp: int, is_ascended_tier: bool = False) -> int:
     current_level = 0
@@ -84,8 +87,13 @@ def is_rogue_expertise_due(character_class_name: Optional[str], level: int) -> b
         return False
     return level in ROGUE_EXPERTISE_LEVELS
 
-# Helper for sorcerer spell/cantrip gain check during level up status transition
+def is_rogue_archetype_due(character_class_name: Optional[str], level: int) -> bool:
+    if not character_class_name or character_class_name.lower() != "rogue":
+        return False
+    return level >= ROGUE_ARCHETYPE_LEVEL # Due if level is 3 or more and no archetype selected yet
+
 async def _sorcerer_gains_cantrip_or_spell_at_level(level: int, db: AsyncSession, character_id: int) -> bool:
+    if not character_id: return False # Should not happen if character object exists
     if not (1 < level <= 20): return False 
     target_cantrips, target_spells_known = SORCERER_SPELLS_KNOWN_TABLE.get(level, (0,0))
     current_cantrips_q = await db.execute(
@@ -136,7 +144,7 @@ async def create_character_for_user(
         character_data["level_up_status"] = None
 
     # Initial HP calculation
-    if character_data.get("hit_points_max") is None:
+    if character_data.get("hit_points_max") is None: # Only calculate if not provided
         if hit_die_type_value and character_data.get("constitution") is not None:
             con_modifier = calculate_ability_modifier(character_data["constitution"])
             calculated_hp = 0
@@ -166,28 +174,32 @@ async def create_character_for_user(
         expected_cantrips, expected_spells_lvl1 = SORCERER_SPELLS_KNOWN_TABLE.get(1, (0,0))
         if character_in.chosen_cantrip_ids:
             if len(set(character_in.chosen_cantrip_ids)) != expected_cantrips:
-                await db.rollback(); raise ValueError(f"Sorcerers at L1 must choose {expected_cantrips} unique cantrips.")
+                # Consider deleting the already committed character if this part fails, for true atomicity
+                # For now, raising ValueError. The character exists but without these spells.
+                raise ValueError(f"Sorcerers at L1 must choose {expected_cantrips} unique cantrips.")
             for spell_id in set(character_in.chosen_cantrip_ids):
                 spell_def = await db.get(SpellModel, spell_id)
-                if not spell_def or spell_def.level != 0: await db.rollback(); raise ValueError(f"Invalid cantrip ID {spell_id}.")
-                if not (spell_def.dnd_classes and "sorcerer" in [c.lower() for c in spell_def.dnd_classes]): await db.rollback(); raise ValueError(f"Spell ID {spell_id} not a Sorcerer cantrip.")
+                if not spell_def or spell_def.level != 0: raise ValueError(f"Invalid cantrip ID {spell_id}.")
+                if not (spell_def.dnd_classes and "sorcerer" in [c.lower() for c in spell_def.dnd_classes]): raise ValueError(f"Spell ID {spell_id} not a Sorcerer cantrip.")
                 db.add(CharacterSpellModel(character_id=db_character.id, spell_id=spell_id, is_known=True, is_prepared=True))
-        elif expected_cantrips > 0: await db.rollback(); raise ValueError(f"Sorcerers at L1 must select {expected_cantrips} cantrips.")
+        elif expected_cantrips > 0: raise ValueError(f"Sorcerers at L1 must select {expected_cantrips} cantrips.")
+        
         if character_in.chosen_initial_spell_ids:
             if len(set(character_in.chosen_initial_spell_ids)) != expected_spells_lvl1:
-                await db.rollback(); raise ValueError(f"Sorcerers at L1 must choose {expected_spells_lvl1} unique L1 spells.")
+                raise ValueError(f"Sorcerers at L1 must choose {expected_spells_lvl1} unique L1 spells.")
             for spell_id in set(character_in.chosen_initial_spell_ids):
                 spell_def = await db.get(SpellModel, spell_id)
-                if not spell_def or spell_def.level != 1: await db.rollback(); raise ValueError(f"Invalid L1 spell ID {spell_id}.")
-                if not (spell_def.dnd_classes and "sorcerer" in [c.lower() for c in spell_def.dnd_classes]): await db.rollback(); raise ValueError(f"Spell ID {spell_id} not a Sorcerer spell.")
-                if spell_id in (character_in.chosen_cantrip_ids or []): await db.rollback(); raise ValueError(f"Spell ID {spell_id} chosen as cantrip and L1 spell.")
+                if not spell_def or spell_def.level != 1: raise ValueError(f"Invalid L1 spell ID {spell_id}.")
+                if not (spell_def.dnd_classes and "sorcerer" in [c.lower() for c in spell_def.dnd_classes]): raise ValueError(f"Spell ID {spell_id} not a Sorcerer spell.")
+                if spell_id in (character_in.chosen_cantrip_ids or []): raise ValueError(f"Spell ID {spell_id} chosen as cantrip and L1 spell.")
                 db.add(CharacterSpellModel(character_id=db_character.id, spell_id=spell_id, is_known=True, is_prepared=True))
-        elif expected_spells_lvl1 > 0: await db.rollback(); raise ValueError(f"Sorcerers at L1 must select {expected_spells_lvl1} L1 spells.")
+        elif expected_spells_lvl1 > 0: raise ValueError(f"Sorcerers at L1 must select {expected_spells_lvl1} L1 spells.")
+            
         if character_in.chosen_cantrip_ids or character_in.chosen_initial_spell_ids:
-            try: await db.commit()
+            try: await db.commit() # Commit spell associations
             except Exception as e: await db.rollback(); raise ValueError(f"Error adding initial spells: {e}")
     
-    return await get_character(db, db_character.id)
+    return await get_character(db, db_character.id) # Ensures all relationships are loaded
 
 
 async def get_character(db: AsyncSession, character_id: int) -> Optional[CharacterModel]:
@@ -226,9 +238,6 @@ async def update_character(
     if "character_class" in update_data and update_data["character_class"] is not None:
         new_class_name_lower = update_data["character_class"].lower()
         character.hit_die_type = CLASS_HIT_DIE_MAP.get(new_class_name_lower)
-        # If class changes, existing skill proficiencies, expertise, spells might need re-evaluation.
-        # This is complex and typically handled by more specific "respec" logic or DM intervention.
-        # For now, just updating hit_die_type.
     for field, value in update_data.items():
         if field == "character_class" and "hit_die_type" in update_data: 
             setattr(character, field, value)
@@ -269,10 +278,13 @@ async def award_xp_to_character(
         character.hit_dice_total = new_level 
         character.hit_dice_remaining = new_level 
         
-        # Determine next step in level-up process
-        if is_rogue_expertise_due(character.character_class, new_level):
+        char_class_lower = character.character_class.lower() if character.character_class else None
+        
+        if is_rogue_expertise_due(char_class_lower, new_level):
              character.level_up_status = "pending_expertise"
-        else: # Default first step after gaining a level number if not expertise
+        elif is_rogue_archetype_due(char_class_lower, new_level) and not character.roguish_archetype:
+            character.level_up_status = "pending_archetype_selection"
+        else: 
             character.level_up_status = "pending_hp"
         
         print(f"Character {character.name} is now level {character.level}. Status: {character.level_up_status}")
@@ -298,25 +310,23 @@ async def confirm_level_up_hp_increase(
     hp_gained_this_level = max(1, hp_gained_from_die + con_modifier)
     
     current_max_hp = character.hit_points_max if character.hit_points_max is not None else 0
-    if character.level == 1: # Should have been set at creation
-        # This logic is mainly for levels > 1. If L1, ensure HP is set correctly based on class+CON.
-        # The create_character_for_user handles initial L1 HP.
-        # This function implies we are confirming HP for a level *gain* (i.e., to L2 or higher).
-        pass # HP max should already be L1 value. This gain is for the new level.
+    if character.level == 1 and current_max_hp == 0: 
+        character.hit_points_max = character.hit_die_type + con_modifier
+    elif character.level > 1 : 
+        character.hit_points_max = current_max_hp + hp_gained_this_level
+        
+    character.hit_points_current = character.hit_points_max
     
-    character.hit_points_max = current_max_hp + hp_gained_this_level
-    character.hit_points_current = character.hit_points_max # Full heal on HP confirmation for level up
-    
-    # Transition to next level-up stage
-    if is_asi_due(character.character_class, character.level): 
+    char_class_lower = character.character_class.lower() if character.character_class else None
+    if is_rogue_archetype_due(char_class_lower, character.level) and not character.roguish_archetype:
+        character.level_up_status = "pending_archetype_selection"
+    elif is_asi_due(character.character_class, character.level): 
         character.level_up_status = "pending_asi"
-    elif character.character_class and character.character_class.lower() == "sorcerer" and \
+    elif char_class_lower == "sorcerer" and \
          await _sorcerer_gains_cantrip_or_spell_at_level(character.level, db=db, character_id=character.id):
         character.level_up_status = "pending_spells"
-    # L6 Rogue Expertise check
-    elif is_rogue_expertise_due(character.character_class, character.level) and character.level > 1 :
+    elif is_rogue_expertise_due(char_class_lower, character.level) and character.level > 1 :
         character.level_up_status = "pending_expertise"
-    # TODO: Add checks for other class features if they require player choice
     else: 
         character.level_up_status = None 
     
@@ -332,63 +342,52 @@ async def apply_character_asi(
     if character.level_up_status != "pending_asi": raise ValueError(f"Character is not pending ASI selection. Current status: {character.level_up_status}")
     
     max_stat_for_tier = 50 if character.is_ascended_tier else 30 
-    # Pydantic CharacterBase validator also checks this upon response serialization.
-    # This is an additional safeguard before DB commit.
-    
     for stat_name_str, increase_amount in asi_selection.stat_increases.items():
         stat_name_lower = stat_name_str.lower()
         current_score = getattr(character, stat_name_lower, None)
         if current_score is None: raise ValueError(f"Invalid stat name '{stat_name_str}' for ASI.")
         new_score = current_score + increase_amount
-        if new_score > max_stat_for_tier: # Check against absolute cap
-            raise ValueError(f"ASI for {stat_name_str} to {new_score} would exceed tier maximum of {max_stat_for_tier}.")
-        # Also ensure score doesn't go above D&D's typical non-epic max of 20 unless ascended allows more.
-        # Our Pydantic schema's CharacterBase validator handles the tier-specific max (30 or 50).
-        # This CRUD check just re-confirms before DB write.
+        if new_score > max_stat_for_tier: raise ValueError(f"ASI for {stat_name_str} to {new_score} would exceed tier maximum of {max_stat_for_tier}.")
         setattr(character, stat_name_lower, new_score)
         print(f"Character {character.name} {stat_name_str} increased by {increase_amount} to {new_score}.")
     
-    # Transition to next stage
-    if character.character_class and character.character_class.lower() == "sorcerer" and \
+    char_class_lower = character.character_class.lower() if character.character_class else None
+    if char_class_lower == "sorcerer" and \
          await _sorcerer_gains_cantrip_or_spell_at_level(character.level, db=db, character_id=character.id):
         character.level_up_status = "pending_spells"
-    # L6 Rogue Expertise check (L1 handled at creation)
-    elif is_rogue_expertise_due(character.character_class, character.level) and character.level > 1:
+    elif is_rogue_expertise_due(char_class_lower, character.level) and character.level > 1 : # L6 Expertise for Rogue
         character.level_up_status = "pending_expertise"
-    # TODO: Add checks for other class features
     else:
         character.level_up_status = None
     print(f"Character {character.name} ASI applied. Level up status set to: {character.level_up_status}")
     db.add(character); await db.commit(); await db.refresh(character)
     return await get_character(db, character.id)
 
-# --- NEW FUNCTION for Rogue Expertise ---
 async def apply_rogue_expertise(
     db: AsyncSession,
     *,
     character: CharacterModel,
-    expertise_selection: ExpertiseSelectionRequest # Uses skill_ids (list of 2 skill IDs)
+    expertise_selection: ExpertiseSelectionRequest
 ) -> CharacterModel:
     if not character.character_class or character.character_class.lower() != "rogue":
         raise ValueError("Expertise selection is for Rogue class characters only.")
     if character.level_up_status != "pending_expertise":
         raise ValueError(f"Character is not pending expertise selection. Current status: {character.level_up_status}")
-    if not is_rogue_expertise_due(character.character_class, character.level): # Double check
+    if not is_rogue_expertise_due(character.character_class, character.level):
         raise ValueError(f"Character (Rogue L{character.level}) is not due for expertise selection at this level.")
 
-    # ExpertiseSelectionRequest schema validates for 2 unique skill IDs.
-    
+    if len(expertise_selection.expert_skill_ids) != 2:
+        raise ValueError("Rogue must select exactly two skill proficiencies for expertise.")
+
     updated_skills_count = 0
     for skill_id in expertise_selection.expert_skill_ids:
         char_skill_assoc = await get_character_skill_association(db, character_id=character.id, skill_id=skill_id)
-        
         if not char_skill_assoc or not char_skill_assoc.is_proficient:
             skill_info_res = await db.execute(select(SkillModel).filter(SkillModel.id == skill_id))
             skill_info = skill_info_res.scalars().first()
             skill_name = skill_info.name if skill_info else f"ID {skill_id}"
             raise ValueError(f"Character must be proficient in skill '{skill_name}' (ID: {skill_id}) to select it for expertise.")
-        
-        if char_skill_assoc.has_expertise: # Should not happen if choices are new
+        if char_skill_assoc.has_expertise:
             skill_info_res = await db.execute(select(SkillModel).filter(SkillModel.id == skill_id))
             skill_info = skill_info_res.scalars().first()
             skill_name = skill_info.name if skill_info else f"ID {skill_id}"
@@ -397,33 +396,67 @@ async def apply_rogue_expertise(
         char_skill_assoc.has_expertise = True
         db.add(char_skill_assoc)
         updated_skills_count +=1
-        skill_info_res = await db.execute(select(SkillModel).filter(SkillModel.id == skill_id)) # For logging name
+        skill_info_res = await db.execute(select(SkillModel).filter(SkillModel.id == skill_id))
         skill_info = skill_info_res.scalars().first()
         print(f"Character {character.name} gained expertise in skill '{skill_info.name if skill_info else skill_id}'.")
 
-    if updated_skills_count != len(expertise_selection.expert_skill_ids):
+    if updated_skills_count != len(expertise_selection.expert_skill_ids): # Should be 2
         await db.rollback() 
         raise ValueError("Failed to update expertise for all selected skills. Ensure choices are valid.")
 
-    # What's next after expertise for a Rogue at L1 or L6? 
-    # Usually nothing else specific for L1. For L6, might be ASI or other features if multiclassed.
-    # For now, assume this completes this stage of level up.
+    # After expertise, determine next state (e.g., L1 Rogue is done with L1 choices)
+    # L6 Rogue might have other L6 features or just be done with this expertise choice.
+    # For now, assume this completes the 'pending_expertise' state.
     character.level_up_status = None 
     print(f"Character {character.name} Rogue expertise selection complete. Level up status: {character.level_up_status}")
     
-    db.add(character) # To save level_up_status on the character
+    db.add(character)
+    await db.commit()
+    await db.refresh(character)
+    return await get_character(db, character.id)
+
+async def apply_rogue_archetype_selection(
+    db: AsyncSession,
+    *,
+    character: CharacterModel,
+    archetype_selection: RogueArchetypeSelectionRequest
+) -> CharacterModel:
+    if not character.character_class or character.character_class.lower() != "rogue":
+        raise ValueError("Archetype selection is for Rogue class characters only.")
+    if character.level < ROGUE_ARCHETYPE_LEVEL:
+        raise ValueError(f"Rogues choose their archetype at level {ROGUE_ARCHETYPE_LEVEL}. Current level: {character.level}")
+    if character.level_up_status != "pending_archetype_selection":
+        raise ValueError(f"Character is not pending archetype selection. Current status: {character.level_up_status}")
+    if character.roguish_archetype is not None:
+        raise ValueError(f"Character has already selected the archetype: {character.roguish_archetype.value}")
+
+    chosen_archetype_enum: RoguishArchetypeEnum = archetype_selection.archetype_name
+    if chosen_archetype_enum not in AVAILABLE_ROGUE_ARCHETYPES: # Make sure AVAILABLE_ROGUE_ARCHETYPES is imported
+        raise ValueError(f"Invalid archetype '{chosen_archetype_enum.value}' selected for Rogue.")
+
+    character.roguish_archetype = chosen_archetype_enum
+    print(f"Character {character.name} selected archetype: {chosen_archetype_enum.value}.")
+
+    # TODO: Grant specific L3 features based on archetype.
+    # For now, just recording the archetype name.
+
+    # After archetype selection at L3, what's next? ASI is at L4.
+    # So, this level-up stage is complete.
+    character.level_up_status = None 
+    
+    print(f"Character {character.name} Rogue archetype selection complete. Level up status: {character.level_up_status}")
+    
+    db.add(character)
     await db.commit()
     await db.refresh(character)
     return await get_character(db, character.id)
 
 
-# --- Character Skill Management Functions (Ensure these are complete and correct) ---
+# --- Character Skill Management Functions ---
 async def get_character_skill_association(
     db: AsyncSession, *, character_id: int, skill_id: int
 ) -> Optional[CharacterSkillModel]:
-    result = await db.execute(
-        select(CharacterSkillModel).filter_by(character_id=character_id, skill_id=skill_id)
-    )
+    result = await db.execute(select(CharacterSkillModel).filter_by(character_id=character_id, skill_id=skill_id))
     return result.scalars().first()
 
 async def assign_or_update_skill_proficiency_to_character(
@@ -433,48 +466,31 @@ async def assign_or_update_skill_proficiency_to_character(
     if not skill_result.scalars().first(): raise ValueError(f"Skill with id {skill_id} not found.") 
     db_char_skill = await get_character_skill_association(db=db, character_id=character_id, skill_id=skill_id)
     if db_char_skill:
-        # Only update if different to avoid unnecessary db write/refresh
         if db_char_skill.is_proficient != is_proficient:
-            db_char_skill.is_proficient = is_proficient
-            db.add(db_char_skill)
+            db_char_skill.is_proficient = is_proficient; db.add(db_char_skill)
     else: 
         db_char_skill = CharacterSkillModel(character_id=character_id, skill_id=skill_id, is_proficient=is_proficient, has_expertise=False)
         db.add(db_char_skill)
-    
-    await db.commit() # Commit any changes or new additions
-    await db.refresh(db_char_skill) # Ensure it's up-to-date, especially if new
-    
-    # Re-fetch with skill_definition for a rich response
-    result_with_skill_def = await db.execute(
-        select(CharacterSkillModel)
-        .options(selectinload(CharacterSkillModel.skill_definition))
-        .filter(CharacterSkillModel.id == db_char_skill.id)
-    )
+    await db.commit(); await db.refresh(db_char_skill)
+    result_with_skill_def = await db.execute(select(CharacterSkillModel).options(selectinload(CharacterSkillModel.skill_definition)).filter(CharacterSkillModel.id == db_char_skill.id))
     return result_with_skill_def.scalars().first()
 
 async def remove_skill_from_character(
     db: AsyncSession, *, character_id: int, skill_id: int
 ) -> Optional[CharacterSkillModel]:
-    db_char_skill_to_delete = await db.execute(
-        select(CharacterSkillModel)
-        .options(selectinload(CharacterSkillModel.skill_definition)) # Eager load for return
-        .filter_by(character_id=character_id, skill_id=skill_id)
-    )
+    db_char_skill_to_delete = await db.execute(select(CharacterSkillModel).options(selectinload(CharacterSkillModel.skill_definition)).filter_by(character_id=character_id, skill_id=skill_id))
     db_char_skill = db_char_skill_to_delete.scalars().first()
-    if db_char_skill:
-        await db.delete(db_char_skill)
-        await db.commit()
-        return db_char_skill
+    if db_char_skill: await db.delete(db_char_skill); await db.commit(); return db_char_skill
     return None
 
 # --- Character Inventory Item Management Functions ---
-async def get_character_inventory_item( # ... (existing code)
+async def get_character_inventory_item(
     db: AsyncSession, *, character_id: int, item_id: int
 ) -> Optional[CharacterItemModel]:
     result = await db.execute(select(CharacterItemModel).filter_by(character_id=character_id, item_id=item_id))
     return result.scalars().first()
 
-async def add_item_to_character_inventory( # ... (existing code)
+async def add_item_to_character_inventory(
     db: AsyncSession, *, character_id: int, item_in: CharacterItemCreateSchema
 ) -> CharacterItemModel:
     item_definition_res = await db.execute(select(ItemModel).filter(ItemModel.id == item_in.item_id))
@@ -486,8 +502,7 @@ async def add_item_to_character_inventory( # ... (existing code)
     result_with_item_def = await db.execute(select(CharacterItemModel).options(selectinload(CharacterItemModel.item_definition)).filter(CharacterItemModel.id == db_character_item.id))
     return result_with_item_def.scalars().first()
 
-
-async def update_character_inventory_item( # ... (existing code)
+async def update_character_inventory_item(
     db: AsyncSession, *, character_item_id: int, item_in: CharacterItemUpdateSchema, character_id: int
 ) -> Optional[CharacterItemModel]:
     result = await db.execute(select(CharacterItemModel).options(selectinload(CharacterItemModel.item_definition)).filter(CharacterItemModel.id == character_item_id, CharacterItemModel.character_id == character_id))
@@ -498,7 +513,7 @@ async def update_character_inventory_item( # ... (existing code)
     if db_character_item.quantity <= 0: await db.delete(db_character_item); await db.commit(); return None 
     else: db.add(db_character_item); await db.commit(); await db.refresh(db_character_item); return db_character_item
 
-async def remove_item_from_character_inventory( # ... (existing code)
+async def remove_item_from_character_inventory(
     db: AsyncSession, *, character_item_id: int, character_id: int
 ) -> Optional[CharacterItemModel]:
     result = await db.execute(select(CharacterItemModel).options(selectinload(CharacterItemModel.item_definition)).filter(CharacterItemModel.id == character_item_id, CharacterItemModel.character_id == character_id))
@@ -506,50 +521,28 @@ async def remove_item_from_character_inventory( # ... (existing code)
     if db_character_item: await db.delete(db_character_item); await db.commit(); return db_character_item
     return None
 
-
 # --- Character Spell Management Functions ---
 async def get_character_spell_association(
     db: AsyncSession, *, character_id: int, spell_id: int
 ) -> Optional[CharacterSpellModel]:
-    result = await db.execute(
-        select(CharacterSpellModel).filter_by(character_id=character_id, spell_id=spell_id)
-    )
+    result = await db.execute(select(CharacterSpellModel).filter_by(character_id=character_id, spell_id=spell_id))
     return result.scalars().first()
 
-async def add_spell_to_character( # Ensure this takes CharacterSpellCreate as input
+async def add_spell_to_character(
     db: AsyncSession, *, character_id: int, spell_association_in: CharacterSpellCreate
 ) -> CharacterSpellModel:
     spell_def = await db.get(SpellModel, spell_association_in.spell_id)
     if not spell_def: raise ValueError(f"Spell definition with ID {spell_association_in.spell_id} not found")
-    
     existing_assoc = await get_character_spell_association(db, character_id=character_id, spell_id=spell_association_in.spell_id)
     if existing_assoc:
-        # Update existing if flags are different, otherwise it's already known/prepared as requested
         changed = False
-        if spell_association_in.is_known is not None and existing_assoc.is_known != spell_association_in.is_known:
-            existing_assoc.is_known = spell_association_in.is_known
-            changed = True
-        if spell_association_in.is_prepared is not None and existing_assoc.is_prepared != spell_association_in.is_prepared:
-            existing_assoc.is_prepared = spell_association_in.is_prepared
-            changed = True
-        if not changed: # No change, just return existing fully loaded
-            return await db.execute(select(CharacterSpellModel).options(selectinload(CharacterSpellModel.spell_definition)).filter(CharacterSpellModel.id == existing_assoc.id)).scalars().first()
+        if spell_association_in.is_known is not None and existing_assoc.is_known != spell_association_in.is_known: existing_assoc.is_known = spell_association_in.is_known; changed = True
+        if spell_association_in.is_prepared is not None and existing_assoc.is_prepared != spell_association_in.is_prepared: existing_assoc.is_prepared = spell_association_in.is_prepared; changed = True
+        if not changed: return await db.execute(select(CharacterSpellModel).options(selectinload(CharacterSpellModel.spell_definition)).filter(CharacterSpellModel.id == existing_assoc.id)).scalars().first()
         db_character_spell = existing_assoc
-    else:
-        db_character_spell = CharacterSpellModel(
-            character_id=character_id,
-            spell_id=spell_association_in.spell_id,
-            is_known=spell_association_in.is_known if spell_association_in.is_known is not None else False, # Default to False if not provided
-            is_prepared=spell_association_in.is_prepared if spell_association_in.is_prepared is not None else False # Default to False
-        )
-    db.add(db_character_spell)
-    await db.commit()
-    await db.refresh(db_character_spell)
-    result_with_spell_def = await db.execute(
-        select(CharacterSpellModel)
-        .options(selectinload(CharacterSpellModel.spell_definition))
-        .filter(CharacterSpellModel.id == db_character_spell.id)
-    )
+    else: db_character_spell = CharacterSpellModel(character_id=character_id, spell_id=spell_association_in.spell_id, is_known=spell_association_in.is_known if spell_association_in.is_known is not None else False, is_prepared=spell_association_in.is_prepared if spell_association_in.is_prepared is not None else False)
+    db.add(db_character_spell); await db.commit(); await db.refresh(db_character_spell)
+    result_with_spell_def = await db.execute(select(CharacterSpellModel).options(selectinload(CharacterSpellModel.spell_definition)).filter(CharacterSpellModel.id == db_character_spell.id))
     return result_with_spell_def.scalars().first()
 
 async def update_character_spell_association(
@@ -558,175 +551,136 @@ async def update_character_spell_association(
     db_char_spell = await get_character_spell_association(db, character_id=character_id, spell_id=spell_id)
     if not db_char_spell: return None
     update_data = spell_association_update_in.model_dump(exclude_unset=True)
-    if not update_data: return await db.execute(select(CharacterSpellModel).options(selectinload(CharacterSpellModel.spell_definition)).filter(CharacterSpellModel.id == db_char_spell.id)).scalars().first() # Return as is if no update data
-    for field, value in update_data.items():
-        setattr(db_char_spell, field, value)
-    db.add(db_char_spell)
-    await db.commit()
-    await db.refresh(db_char_spell)
-    result_with_spell_def = await db.execute(
-        select(CharacterSpellModel)
-        .options(selectinload(CharacterSpellModel.spell_definition))
-        .filter(CharacterSpellModel.id == db_char_spell.id)
-    )
+    if not update_data: return await db.execute(select(CharacterSpellModel).options(selectinload(CharacterSpellModel.spell_definition)).filter(CharacterSpellModel.id == db_char_spell.id)).scalars().first()
+    for field, value in update_data.items(): setattr(db_char_spell, field, value)
+    db.add(db_char_spell); await db.commit(); await db.refresh(db_char_spell)
+    result_with_spell_def = await db.execute(select(CharacterSpellModel).options(selectinload(CharacterSpellModel.spell_definition)).filter(CharacterSpellModel.id == db_char_spell.id))
     return result_with_spell_def.scalars().first()
 
 async def remove_spell_from_character(
     db: AsyncSession, *, character_id: int, spell_id: int
 ) -> Optional[CharacterSpellModel]:
-    db_char_spell_to_delete = await db.execute(
-        select(CharacterSpellModel)
-        .options(selectinload(CharacterSpellModel.spell_definition))
-        .filter_by(character_id=character_id, spell_id=spell_id)
-    )
+    db_char_spell_to_delete = await db.execute(select(CharacterSpellModel).options(selectinload(CharacterSpellModel.spell_definition)).filter_by(character_id=character_id, spell_id=spell_id))
     db_character_spell = db_char_spell_to_delete.scalars().first()
-    if db_character_spell:
-        await db.delete(db_character_spell)
-        await db.commit()
-        return db_character_spell
+    if db_character_spell: await db.delete(db_character_spell); await db.commit(); return db_character_spell
     return None
 
-# --- NEW FUNCTION for Applying Sorcerer Spell Selections ---
 async def apply_sorcerer_spell_selections(
-    db: AsyncSession,
-    *,
-    character: CharacterModel,
-    spell_selection: SorcererSpellSelectionRequest # This schema now has new_leveled_spell_ids (list)
+    db: AsyncSession, *, character: CharacterModel, spell_selection: SorcererSpellSelectionRequest
 ) -> CharacterModel:
-    if not character.character_class or character.character_class.lower() != "sorcerer":
-        raise ValueError("This spell selection process is only for Sorcerers.")
-    if character.level_up_status != "pending_spells":
-        raise ValueError(f"Character is not pending spell selection. Current status: {character.level_up_status}")
-
-    char_level = character.level # This is the NEW level the character has reached
-
-    # Determine current number of known cantrips and leveled spells (level 1+)
-    current_known_cantrips_q = await db.execute(
-        select(func.count(CharacterSpellModel.id))
-        .join(SpellModel, CharacterSpellModel.spell_id == SpellModel.id)
-        .filter(CharacterSpellModel.character_id == character.id, CharacterSpellModel.is_known == True, SpellModel.level == 0)
-    )
-    current_known_cantrips_count = current_known_cantrips_q.scalar_one_or_none() or 0
-
-    current_known_leveled_spells_q = await db.execute(
-        select(func.count(CharacterSpellModel.id))
-        .join(SpellModel, CharacterSpellModel.spell_id == SpellModel.id)
-        .filter(CharacterSpellModel.character_id == character.id, CharacterSpellModel.is_known == True, SpellModel.level > 0)
-    )
-    current_known_leveled_spells_count = current_known_leveled_spells_q.scalar_one_or_none() or 0
-
-    # Get target counts for the new level
+    if not character.character_class or character.character_class.lower() != "sorcerer": raise ValueError("This spell selection process is only for Sorcerers.")
+    if character.level_up_status != "pending_spells": raise ValueError(f"Character is not pending spell selection. Current status: {character.level_up_status}")
+    char_level = character.level
+    pre_selection_known_spells_q = await db.execute(select(CharacterSpellModel.spell_id).join(SpellModel).filter(CharacterSpellModel.character_id == character.id, CharacterSpellModel.is_known == True, SpellModel.level > 0))
+    pre_selection_known_spell_ids = {row[0] for row in pre_selection_known_spells_q.all()}
+    current_known_leveled_spells_count = len(pre_selection_known_spell_ids)
     target_cantrips_at_new_level, target_leveled_spells_at_new_level = SORCERER_SPELLS_KNOWN_TABLE.get(char_level, (0, 0))
     max_spell_level_learnable = get_sorcerer_max_spell_level_can_learn(char_level)
-
-    # --- Handle Spell Replacement First (if any) ---
     if spell_selection.spell_to_replace_id is not None and spell_selection.replacement_spell_id is not None:
-        # ... (existing replacement logic - this part should be okay) ...
-        # (ensure it correctly calls your remove_spell_from_character and add_spell_to_character,
-        # and that add_spell_to_character sets is_known=True, is_prepared=True for sorcerers)
-        if spell_selection.spell_to_replace_id == spell_selection.replacement_spell_id:
-            raise ValueError("Cannot replace a spell with itself.")
-        spell_to_replace_model = await db.get(SpellModel, spell_selection.spell_to_replace_id)
-        if not spell_to_replace_model or spell_to_replace_model.level == 0:
-             raise ValueError(f"Spell to replace (ID: {spell_selection.spell_to_replace_id}) is a cantrip or does not exist.")
-        
-        existing_assoc_to_replace = await get_character_spell_association(db, character_id=character.id, spell_id=spell_selection.spell_to_replace_id)
-        if not (existing_assoc_to_replace and existing_assoc_to_replace.is_known):
-            raise ValueError(f"Spell to replace (ID: {spell_selection.spell_to_replace_id}) is not currently known by the character.")
-
+        if spell_selection.spell_to_replace_id == spell_selection.replacement_spell_id: raise ValueError("Cannot replace a spell with itself.")
+        spell_to_replace_model = await db.get(SpellModel, spell_selection.spell_to_replace_id);
+        if not spell_to_replace_model or spell_to_replace_model.level == 0: raise ValueError(f"Spell to replace (ID: {spell_selection.spell_to_replace_id}) is cantrip or non-existent.")
+        if spell_selection.spell_to_replace_id not in pre_selection_known_spell_ids: raise ValueError(f"Spell to replace (ID: {spell_selection.spell_to_replace_id}) not currently known.")
         replacement_spell_model = await db.get(SpellModel, spell_selection.replacement_spell_id)
-        if not replacement_spell_model: raise ValueError(f"Chosen replacement spell with ID {spell_selection.replacement_spell_id} not found.")
-        if replacement_spell_model.level == 0 or replacement_spell_model.level > max_spell_level_learnable: raise ValueError(f"Replacement spell '{replacement_spell_model.name}' is of invalid level.")
-        if not (replacement_spell_model.dnd_classes and "sorcerer" in [c.lower() for c in replacement_spell_model.dnd_classes]): raise ValueError(f"Replacement spell '{replacement_spell_model.name}' is not a Sorcerer spell.")
-        
+        if not replacement_spell_model: raise ValueError(f"Replacement spell ID {spell_selection.replacement_spell_id} not found.")
+        if replacement_spell_model.level == 0 or replacement_spell_model.level > max_spell_level_learnable: raise ValueError(f"Replacement spell '{replacement_spell_model.name}' invalid level.")
+        if not (replacement_spell_model.dnd_classes and "sorcerer" in [c.lower() for c in replacement_spell_model.dnd_classes]): raise ValueError(f"Replacement spell '{replacement_spell_model.name}' not Sorcerer spell.")
         already_knows_replacement = await get_character_spell_association(db, character_id=character.id, spell_id=replacement_spell_model.id)
-        if already_knows_replacement and already_knows_replacement.is_known and replacement_spell_model.id != spell_selection.spell_to_replace_id: # Check it's not the one being replaced if ids are same
-            raise ValueError(f"Character already knows the replacement spell '{replacement_spell_model.name}'.")
-
+        if already_knows_replacement and already_knows_replacement.is_known and replacement_spell_model.id != spell_selection.spell_to_replace_id : raise ValueError(f"Already knows replacement spell '{replacement_spell_model.name}'.")
         await remove_spell_from_character(db=db, character_id=character.id, spell_id=spell_selection.spell_to_replace_id)
-        # Assuming CharacterSpellCreate schema is defined and add_spell_to_character uses it
         replacement_create_schema = CharacterSpellCreate(spell_id=replacement_spell_model.id, is_known=True, is_prepared=True)
         await add_spell_to_character(db=db, character_id=character.id, spell_association_in=replacement_create_schema)
-        print(f"Character {character.name} replaced spell ID {spell_selection.spell_to_replace_id} with {replacement_spell_model.name}")
-        # current_known_leveled_spells_count doesn't change from a swap
-
-    # --- Handle NEW Cantrips Learned ---
+        pre_selection_known_spell_ids.remove(spell_selection.spell_to_replace_id); pre_selection_known_spell_ids.add(replacement_spell_model.id)
+    current_known_cantrips_q = await db.execute(select(func.count(CharacterSpellModel.id)).join(SpellModel).filter(CharacterSpellModel.character_id == character.id, CharacterSpellModel.is_known == True, SpellModel.level == 0))
+    current_known_cantrips_count = current_known_cantrips_q.scalar_one_or_none() or 0
     num_new_cantrips_to_choose = target_cantrips_at_new_level - current_known_cantrips_count
     if spell_selection.chosen_cantrip_ids_on_level_up:
-        if len(spell_selection.chosen_cantrip_ids_on_level_up) != num_new_cantrips_to_choose:
-            raise ValueError(f"Sorcerer at level {char_level} should choose {num_new_cantrips_to_choose} new cantrip(s). Provided: {len(spell_selection.chosen_cantrip_ids_on_level_up)}.")
+        if len(spell_selection.chosen_cantrip_ids_on_level_up) != num_new_cantrips_to_choose: raise ValueError(f"Should choose {num_new_cantrips_to_choose} new cantrip(s). Provided: {len(spell_selection.chosen_cantrip_ids_on_level_up)}.")
         for spell_id in spell_selection.chosen_cantrip_ids_on_level_up:
             cantrip_def = await db.get(SpellModel, spell_id)
-            if not cantrip_def or cantrip_def.level != 0: raise ValueError(f"Invalid cantrip ID {spell_id} chosen or not a cantrip.")
-            if not (cantrip_def.dnd_classes and "sorcerer" in [c.lower() for c in cantrip_def.dnd_classes]): raise ValueError(f"Spell ID {spell_id} ({cantrip_def.name}) is not a Sorcerer cantrip.")
-            
+            if not cantrip_def or cantrip_def.level != 0: raise ValueError(f"Invalid cantrip ID {spell_id}.")
+            if not (cantrip_def.dnd_classes and "sorcerer" in [c.lower() for c in cantrip_def.dnd_classes]): raise ValueError(f"Spell ID {spell_id} not Sorcerer cantrip.")
             already_knows_cantrip = await get_character_spell_association(db, character_id=character.id, spell_id=cantrip_def.id)
-            if already_knows_cantrip and already_knows_cantrip.is_known: raise ValueError(f"Character already knows cantrip '{cantrip_def.name}'.")
-
+            if already_knows_cantrip and already_knows_cantrip.is_known: raise ValueError(f"Already knows cantrip '{cantrip_def.name}'.")
             cantrip_create_schema = CharacterSpellCreate(spell_id=cantrip_def.id, is_known=True, is_prepared=True)
             await add_spell_to_character(db=db, character_id=character.id, spell_association_in=cantrip_create_schema)
-            print(f"Character {character.name} learned new cantrip: {cantrip_def.name}")
-    elif num_new_cantrips_to_choose > 0:
-        raise ValueError(f"Must choose {num_new_cantrips_to_choose} new cantrip(s) for level {char_level}.")
-
-    # --- Handle NEW Leveled Spells Learned ---
-    # Recalculate current known leveled spells *after* potential replacement
-    current_known_leveled_spells_q_after_swap = await db.execute(
-        select(func.count(CharacterSpellModel.id))
-        .join(SpellModel, CharacterSpellModel.spell_id == SpellModel.id)
-        .filter(CharacterSpellModel.character_id == character.id, CharacterSpellModel.is_known == True, SpellModel.level > 0)
-    )
+    elif num_new_cantrips_to_choose > 0: raise ValueError(f"Must choose {num_new_cantrips_to_choose} new cantrip(s).")
+    current_known_leveled_spells_q_after_swap = await db.execute(select(func.count(CharacterSpellModel.id)).join(SpellModel).filter(CharacterSpellModel.character_id == character.id, CharacterSpellModel.is_known == True, SpellModel.level > 0))
     current_known_leveled_spells_count_after_swap = current_known_leveled_spells_q_after_swap.scalar_one_or_none() or 0
-    
     num_new_leveled_spells_to_choose = target_leveled_spells_at_new_level - current_known_leveled_spells_count_after_swap
-
-    if spell_selection.new_leveled_spell_ids: # Changed from new_spell_learned_id
-        if len(spell_selection.new_leveled_spell_ids) != num_new_leveled_spells_to_choose:
-            raise ValueError(f"Sorcerer at level {char_level} should choose {num_new_leveled_spells_to_choose} new leveled spell(s). Provided: {len(spell_selection.new_leveled_spell_ids)}.")
-        
+    if spell_selection.new_leveled_spell_ids:
+        if len(spell_selection.new_leveled_spell_ids) != num_new_leveled_spells_to_choose: raise ValueError(f"Should choose {num_new_leveled_spells_to_choose} new leveled spell(s). Provided: {len(spell_selection.new_leveled_spell_ids)}.")
         for spell_id in spell_selection.new_leveled_spell_ids:
             new_spell_to_learn_model = await db.get(SpellModel, spell_id)
-            if not new_spell_to_learn_model: raise ValueError(f"Chosen new spell with ID {spell_id} not found.")
-            if new_spell_to_learn_model.level == 0 or new_spell_to_learn_model.level > max_spell_level_learnable: raise ValueError(f"New spell '{new_spell_to_learn_model.name}' is of invalid level ({new_spell_to_learn_model.level}).")
-            if not (new_spell_to_learn_model.dnd_classes and "sorcerer" in [c.lower() for c in new_spell_to_learn_model.dnd_classes]): raise ValueError(f"New spell '{new_spell_to_learn_model.name}' is not a Sorcerer spell.")
-            
+            if not new_spell_to_learn_model: raise ValueError(f"New spell ID {spell_id} not found.")
+            if new_spell_to_learn_model.level == 0 or new_spell_to_learn_model.level > max_spell_level_learnable: raise ValueError(f"New spell '{new_spell_to_learn_model.name}' invalid level.")
+            if not (new_spell_to_learn_model.dnd_classes and "sorcerer" in [c.lower() for c in new_spell_to_learn_model.dnd_classes]): raise ValueError(f"New spell '{new_spell_to_learn_model.name}' not Sorcerer spell.")
             already_knows_new_spell = await get_character_spell_association(db, character_id=character.id, spell_id=new_spell_to_learn_model.id)
-            if already_knows_new_spell and already_knows_new_spell.is_known: raise ValueError(f"Character already knows the new spell '{new_spell_to_learn_model.name}'.")
-
+            if already_knows_new_spell and already_knows_new_spell.is_known: raise ValueError(f"Already knows new spell '{new_spell_to_learn_model.name}'.")
             new_spell_create_schema = CharacterSpellCreate(spell_id=new_spell_to_learn_model.id, is_known=True, is_prepared=True)
             await add_spell_to_character(db=db, character_id=character.id, spell_association_in=new_spell_create_schema)
-            print(f"Character {character.name} learned new spell: {new_spell_to_learn_model.name}")
-            
-    elif num_new_leveled_spells_to_choose > 0:
-        raise ValueError(f"Must choose {num_new_leveled_spells_to_choose} new leveled spell(s) for level {char_level}.")
-
-    # Final validation of total known spell and cantrip counts
-    await db.commit() 
-    await db.refresh(character) 
-
+    elif num_new_leveled_spells_to_choose > 0: raise ValueError(f"Must choose {num_new_leveled_spells_to_choose} new leveled spell(s).")
+    await db.commit(); await db.refresh(character) 
     final_known_cantrips_q = await db.execute(select(func.count(CharacterSpellModel.id)).join(SpellModel).filter(CharacterSpellModel.character_id == character.id, CharacterSpellModel.is_known == True, SpellModel.level == 0))
     final_known_cantrips_count = final_known_cantrips_q.scalar_one_or_none() or 0
-    if final_known_cantrips_count != target_cantrips_at_new_level:
-        raise ValueError(f"Incorrect final number of cantrips known ({final_known_cantrips_count}). Expected: {target_cantrips_at_new_level}.")
-
+    if final_known_cantrips_count != target_cantrips_at_new_level: raise ValueError(f"Incorrect final cantrips known ({final_known_cantrips_count}). Expected: {target_cantrips_at_new_level}.")
     final_known_leveled_spells_q = await db.execute(select(func.count(CharacterSpellModel.id)).join(SpellModel).filter(CharacterSpellModel.character_id == character.id, CharacterSpellModel.is_known == True, SpellModel.level > 0))
     final_known_leveled_spells_count = final_known_leveled_spells_q.scalar_one_or_none() or 0
-    if final_known_leveled_spells_count != target_leveled_spells_at_new_level:
-        raise ValueError(f"Incorrect final number of leveled spells known ({final_known_leveled_spells_count}). Expected: {target_leveled_spells_at_new_level}.")
-
+    if final_known_leveled_spells_count != target_leveled_spells_at_new_level: raise ValueError(f"Incorrect final leveled spells known ({final_known_leveled_spells_count}). Expected: {target_leveled_spells_at_new_level}.")
     character.level_up_status = None 
     print(f"Character {character.name} Sorcerer spell selection complete. Level up status: {character.level_up_status}")
+    db.add(character); await db.commit(); await db.refresh(character)
+    return await get_character(db, character.id)
 
+# --- Hit Dice and Death Save functions ---
+async def spend_character_hit_die(
+    db: AsyncSession, *, character: CharacterModel, dice_roll_result: int
+) -> CharacterModel:
+    if character.hit_dice_remaining is None or character.hit_dice_remaining <= 0:
+        raise ValueError("No hit dice remaining to spend.")
+    if not character.hit_die_type:
+        raise ValueError("Character hit_die_type is not set.")
+    con_modifier = calculate_ability_modifier(character.constitution)
+    hp_healed = max(1, dice_roll_result + con_modifier)
+    character.hit_dice_remaining -= 1
+    current_hp = character.hit_points_current if character.hit_points_current is not None else 0
+    max_hp = character.hit_points_max if character.hit_points_max is not None else current_hp
+    character.hit_points_current = min(current_hp + hp_healed, max_hp)
     db.add(character)
     await db.commit()
     await db.refresh(character)
     return await get_character(db, character.id)
 
-# --- Admin Function for setting character progression (as before) ---
+async def record_death_save(
+    db: AsyncSession, *, character: CharacterModel, success: bool
+) -> CharacterModel:
+    if success:
+        current_successes = character.death_save_successes if character.death_save_successes is not None else 0
+        character.death_save_successes = min(current_successes + 1, 3)
+    else:
+        current_failures = character.death_save_failures if character.death_save_failures is not None else 0
+        character.death_save_failures = min(current_failures + 1, 3)
+    if character.death_save_successes >= 3 or character.death_save_failures >= 3:
+        print(f"Character {character.name} death save resolved: Successes={character.death_save_successes}, Failures={character.death_save_failures}. Resetting saves.")
+        character.death_save_successes = 0
+        character.death_save_failures = 0
+    db.add(character)
+    await db.commit()
+    await db.refresh(character)
+    return await get_character(db, character.id)
+
+async def reset_death_saves(db: AsyncSession, *, character: CharacterModel) -> CharacterModel:
+    character.death_save_successes = 0
+    character.death_save_failures = 0
+    db.add(character)
+    await db.commit()
+    await db.refresh(character)
+    return await get_character(db, character.id)
+
+# --- Admin Function for setting character progression ---
 async def admin_update_character_progression(
     db: AsyncSession, *, character: CharacterModel, progression_in: AdminCharacterProgressionUpdate
 ) -> CharacterModel:
-    # ... (existing admin_update_character_progression logic) ...
     updated = False
     if progression_in.level is not None:
         max_level = 50 if character.is_ascended_tier else 30
@@ -749,24 +703,19 @@ async def admin_update_character_progression(
     elif progression_in.experience_points is not None:
         character.experience_points = progression_in.experience_points
         new_level = get_level_for_xp(character.experience_points, character.is_ascended_tier)
-        if new_level != character.level: # Check if level actually changed
-            previous_level_for_calc = character.level # Store old level before updating
+        if new_level != character.level: 
             character.level = new_level
             character.hit_dice_total = new_level
-            character.hit_dice_remaining = new_level # Regain all on level change via XP set by admin
-            
-            # Recalculate HP based on all levels gained
+            character.hit_dice_remaining = new_level
             if character.hit_die_type and character.constitution is not None:
                 con_mod = calculate_ability_modifier(character.constitution)
-                # Start with L1 HP
                 new_max_hp = character.hit_die_type + con_mod
-                # Add HP for subsequent levels up to the new level
                 if character.level > 1:
                     for _lvl in range(2, character.level + 1):
                         new_max_hp += max(1, (character.hit_die_type // 2) + 1 + con_mod)
                 character.hit_points_max = new_max_hp
-                character.hit_points_current = new_max_hp # Full heal
-            character.level_up_status = None # Admin set, clear pending status
+                character.hit_points_current = new_max_hp
+            character.level_up_status = None
         updated = True
     if updated:
         db.add(character); await db.commit(); await db.refresh(character)
