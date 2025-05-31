@@ -5,9 +5,10 @@ from datetime import datetime
 
 from .skill import CharacterSkill as CharacterSkillSchema
 from .item import CharacterItem as CharacterItemSchema
-from .character_spell import CharacterSpell as CharacterSpellSchema # <--- ENSURE THIS IS IMPORTED
+from .character_spell import CharacterSpell as CharacterSpellSchema 
 
 class CharacterBase(BaseModel):
+    # ... (CharacterBase as before, including level_up_status) ...
     name: str = Field(..., min_length=1, max_length=100)
     race: Optional[str] = Field(None, max_length=50)
     character_class: Optional[str] = Field(None, max_length=50)
@@ -67,6 +68,7 @@ class CharacterBase(BaseModel):
 class CharacterCreate(CharacterBase):
     chosen_cantrip_ids: Optional[List[int]] = Field(None, description="List of spell IDs for initial cantrips (e.g., for Sorcerers at L1).")
     chosen_initial_spell_ids: Optional[List[int]] = Field(None, description="List of spell IDs for initial L1 spells known (e.g., for Sorcerers at L1).")
+    # Expertise choices will be handled after creation via a specific endpoint if character is L1 Rogue
 
 class CharacterUpdate(BaseModel): 
     # ... (CharacterUpdate as before - without level, xp, hit_die_type, hit_dice_total, level_up_status) ...
@@ -113,13 +115,12 @@ class CharacterUpdate(BaseModel):
                 raise ValueError(f"Max Hit Points ({data.hit_points_max}) cannot exceed {max_hp_allowed} for this tier status ({effective_is_ascended}).")
         return data
 
-
 class CharacterInDBBase(CharacterBase):
     id: int
     user_id: int 
     created_at: datetime
     updated_at: datetime
-    skills: List[CharacterSkillSchema] = []
+    skills: List[CharacterSkillSchema] = [] # CharacterSkillSchema now includes has_expertise
     inventory_items: List[CharacterItemSchema] = []
     known_spells: List[CharacterSpellSchema] = []
 
@@ -171,10 +172,8 @@ class SorcererSpellSelectionRequest(BaseModel):
     spell_to_replace_id: Optional[int] = Field(None, description="ID of a currently known spell to replace (optional).")
     replacement_spell_id: Optional[int] = Field(None, description="ID of the new spell to learn in place of the replaced one (required if spell_to_replace_id is provided).")
     chosen_cantrip_ids_on_level_up: Optional[List[int]] = Field(None, description="List of new cantrip IDs if character gains cantrips at this level.")
-
-
     @model_validator(mode='after')
-    def check_replacement_logic(cls, data):
+    def check_replacement_logic(cls, data): # ... (validator as before) ...
         if data is None: return data
         if data.spell_to_replace_id is not None and data.replacement_spell_id is None:
             raise ValueError("If replacing a spell ('spell_to_replace_id' is provided), 'replacement_spell_id' must also be provided.")
@@ -182,3 +181,16 @@ class SorcererSpellSelectionRequest(BaseModel):
             raise ValueError("If providing a replacement spell ('replacement_spell_id'), 'spell_to_replace_id' must also be provided to indicate which spell is being replaced.")
         return data
 
+# --- NEW SCHEMA for Expertise Selection ---
+class ExpertiseSelectionRequest(BaseModel):
+    # Rogue chooses two proficiencies (skills, or one skill and thieves' tools)
+    # For MVP, let's support choosing two SKILL IDs they are already proficient in.
+    expert_skill_ids: List[int] = Field(..., min_length=2, max_length=2, description="List of exactly two unique skill IDs to gain expertise in. Character must be proficient in these skills.")
+
+    @model_validator(mode='after')
+    def check_distinct_skills(cls, data):
+        if data is None or data.expert_skill_ids is None: # Should be caught by min_length if None
+            return data 
+        if len(data.expert_skill_ids) != len(set(data.expert_skill_ids)):
+            raise ValueError("Chosen skill IDs for expertise must be unique.")
+        return data

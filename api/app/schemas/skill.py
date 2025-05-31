@@ -1,50 +1,50 @@
 # Path: api/app/schemas/skill.py
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List # Added List for ExpertiseSelectionRequest if it were here
 
 # --- Skill Schemas (for the predefined list of D&D skills) ---
 
 class SkillBase(BaseModel):
     name: str = Field(..., max_length=100)
-    ability_modifier_name: str = Field(..., max_length=3) # e.g., "DEX", "INT"
+    ability_modifier_name: str = Field(..., max_length=3) 
     description: Optional[str] = Field(None, max_length=255)
 
-class SkillCreate(SkillBase): # For initially populating the skills table
+class SkillCreate(SkillBase):
     pass
 
-class SkillUpdate(SkillBase): # Unlikely to be used by users, more for admin
+class SkillUpdate(SkillBase):
     name: Optional[str] = Field(None, max_length=100)
     ability_modifier_name: Optional[str] = Field(None, max_length=3)
     description: Optional[str] = Field(None, max_length=255)
 
-class Skill(SkillBase): # For API responses when listing available skills
+class Skill(SkillBase):
     id: int
 
     class Config:
         from_attributes = True
 
-# --- CharacterSkill Schemas (linking Characters to Skills with proficiency) ---
+# --- CharacterSkill Schemas (linking Characters to Skills with proficiency AND EXPERTISE) ---
 
 class CharacterSkillBase(BaseModel):
-    skill_id: int # The ID of the skill from the 'skills' table
+    skill_id: int 
     is_proficient: bool = False
-    # has_expertise: Optional[bool] = False # Future enhancement
+    has_expertise: bool = False # <--- NEW FIELD, defaults to False
 
-class CharacterSkillCreate(CharacterSkillBase): # When assigning/updating a skill proficiency for a character
+class CharacterSkillCreate(CharacterSkillBase): 
+    # When initially assigning a skill, expertise is usually not set here,
+    # but via a separate "choose expertise" step.
+    # However, having has_expertise here allows the CRUD to set it if needed.
     pass 
 
-class CharacterSkillUpdate(BaseModel): # For updating proficiency/expertise
+class CharacterSkillUpdate(BaseModel): 
     is_proficient: Optional[bool] = None
-    # has_expertise: Optional[bool] = None
+    has_expertise: Optional[bool] = None # <--- ADDED expertise here for potential updates
 
 class CharacterSkill(CharacterSkillBase): # For API responses showing a character's skill
-    id: int
-    # character_id: int # Not usually needed in response if fetched as part of a character
-    skill_definition: Skill # <--- RENAMED FROM 'skill' to match SQLAlchemy model relationship
-                               # This expects a nested Skill schema with details
+    id: int 
+    skill_definition: Skill 
 
     class Config:
         from_attributes = True
-
 
 
