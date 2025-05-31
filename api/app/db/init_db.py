@@ -175,3 +175,4 @@ async def seed_spells(db: AsyncSession) -> None: # This function should already 
             print(f"Error during spell seeding commit: {e}")
     else:
         print("No new spells to add. Database spell list appears up to date.")
+

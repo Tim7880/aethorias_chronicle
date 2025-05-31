@@ -2,26 +2,26 @@
 from pydantic import BaseModel, Field
 from typing import Optional
 
-from .spell import Spell as SpellSchema # To nest spell details in the response
+# Import the base Spell schema for nesting in responses
+from .spell import Spell as SpellSchema # Assuming your Spell response schema is named Spell
 
 class CharacterSpellBase(BaseModel):
     spell_id: int
-    is_known: bool = True
+    is_known: bool = False
     is_prepared: bool = False
 
 class CharacterSpellCreate(CharacterSpellBase):
-    # When creating, we just need the spell_id.
-    # is_known and is_prepared will use defaults or can be set.
-    pass
+    # For Sorcerers learning spells/cantrips, we'll set these to True by default in CRUD
+    is_known: bool = True 
+    is_prepared: bool = True # Sorcerers "know" spells, which are effectively always "prepared"
 
-class CharacterSpellUpdate(BaseModel):
-    # Only allow updating 'is_prepared' for now. 'is_known' is typically true if associated.
-    # 'spell_id' and 'character_id' should not be updatable on an existing association.
+class CharacterSpellUpdate(BaseModel): # For casters who prepare spells
     is_prepared: Optional[bool] = None
+    # is_known might not be updatable directly here for most classes once learned
 
 class CharacterSpell(CharacterSpellBase): # For API responses
-    id: int # The ID of the CharacterSpell association record itself
-    # character_id: int # Often known from context (e.g., part of a character's details)
+    id: int
+    # character_id: int # Usually known from the context of the parent Character schema
     spell_definition: SpellSchema # Nested full spell details
 
     class Config:

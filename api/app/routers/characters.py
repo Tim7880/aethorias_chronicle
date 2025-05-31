@@ -9,7 +9,8 @@ from app.schemas.character import (
     CharacterBase, 
     CharacterHPLevelUpRequest, CharacterHPLevelUpResponse,
     SpendHitDieRequest, RecordDeathSaveRequest,
-    ASISelectionRequest # <--- IMPORT NEW ASI SCHEMA
+    ASISelectionRequest,
+    SorcererSpellSelectionRequest # Ensure this is imported
 )
 from app.schemas.skill import CharacterSkill as CharacterSkillSchema
 from app.schemas.skill import CharacterSkillCreate
@@ -18,12 +19,14 @@ from app.schemas.item import (
     CharacterItemCreate, 
     CharacterItemUpdate
 )
-from app.schemas.character_spell import CharacterSpell as CharacterSpellSchema, CharacterSpellCreate, CharacterSpellUpdate 
+# Assuming CharacterSpellSchema is correctly defined and imported for other endpoints if you use it
+from app.schemas.character_spell import CharacterSpell as CharacterSpellSchema 
 
-from app.crud import crud_character, crud_skill, crud_item
+from app.crud import crud_character, crud_skill, crud_item 
 from app.models.user import User as UserModel
 from app.routers.auth import get_current_active_user
-from app.models.character_skill import CharacterSkill as CharacterSkillModel
+# Model imports for type hinting or direct use if necessary
+from app.models.character_skill import CharacterSkill as CharacterSkillModel 
 from app.models.character_item import CharacterItem as CharacterItemModel
 from app.models.character_spell import CharacterSpell as CharacterSpellModel
 from sqlalchemy.orm import selectinload
@@ -36,16 +39,19 @@ router = APIRouter(
     dependencies=[Depends(get_current_active_user)]
 )
 
-# --- Character Core Endpoints (existing) ---
+# --- Character Core Endpoints ---
 @router.post("/", response_model=CharacterSchema, status_code=status.HTTP_201_CREATED)
 async def create_character( 
     character_in: CharacterCreate,
     db: AsyncSession = Depends(get_db),
     current_user: UserModel = Depends(get_current_active_user)
 ):
-    return await crud_character.create_character_for_user(
-        db=db, character_in=character_in, user_id=current_user.id
-    )
+    try:
+        return await crud_character.create_character_for_user(
+            db=db, character_in=character_in, user_id=current_user.id
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 @router.get("/", response_model=List[CharacterSchema])
 async def read_characters_for_user(
@@ -108,8 +114,6 @@ async def delete_existing_character(
     db: AsyncSession = Depends(get_db),
     current_user: UserModel = Depends(get_current_active_user)
 ):
-    # Ensure crud_character.delete_character fetches with get_character or loads relationships
-    # if CharacterSchema response model expects them.
     deleted_character = await crud_character.delete_character(
         db=db, character_id=character_id, user_id=current_user.id
     )
@@ -117,15 +121,15 @@ async def delete_existing_character(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Character not found or not authorized to delete")
     return deleted_character
 
-# --- Character Skill Management Endpoints (existing) ---
+# --- Character Skill Management Endpoints (Existing) ---
 @router.post("/{character_id}/skills", response_model=CharacterSkillSchema, status_code=status.HTTP_201_CREATED)
-# ... (existing assign_skill_to_character_endpoint code) ...
 async def assign_skill_to_character_endpoint(
     character_id: int,
     skill_in: CharacterSkillCreate,
     db: AsyncSession = Depends(get_db),
     current_user: UserModel = Depends(get_current_active_user)
 ):
+    # ... (existing implementation) ...
     db_character = await crud_character.get_character(db=db, character_id=character_id)
     if not db_character or (db_character.user_id != current_user.id and not current_user.is_superuser):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND if not db_character else status.HTTP_403_FORBIDDEN, 
@@ -141,14 +145,15 @@ async def assign_skill_to_character_endpoint(
     except ValueError as e:
          raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
+
 @router.delete("/{character_id}/skills/{skill_id}", status_code=status.HTTP_204_NO_CONTENT)
-# ... (existing remove_skill_from_character_endpoint code) ...
 async def remove_skill_from_character_endpoint(
     character_id: int,
     skill_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: UserModel = Depends(get_current_active_user)
 ):
+    # ... (existing implementation) ...
     db_character = await crud_character.get_character(db=db, character_id=character_id)
     if not db_character or (db_character.user_id != current_user.id and not current_user.is_superuser):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND if not db_character else status.HTTP_403_FORBIDDEN,
@@ -160,10 +165,10 @@ async def remove_skill_from_character_endpoint(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Skill association not found for this character, or was already removed.")
     return
 
-# --- Character Inventory Item Management Endpoints (existing) ---
+# --- Character Inventory Item Management Endpoints (Existing) ---
 @router.post("/{character_id}/inventory", response_model=CharacterItemSchema, status_code=status.HTTP_201_CREATED)
-# ... (existing add_item_to_inventory code) ...
 async def add_item_to_inventory(
+    # ... (existing implementation) ...
     character_id: int,
     item_in: CharacterItemCreate, 
     db: AsyncSession = Depends(get_db),
@@ -182,31 +187,29 @@ async def add_item_to_inventory(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 @router.put("/{character_id}/inventory/{character_item_id}", response_model=Optional[CharacterItemSchema])
-# ... (existing update_inventory_item code) ...
 async def update_inventory_item(
+    # ... (existing implementation) ...
     character_id: int,
     character_item_id: int,
     item_update_in: CharacterItemUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: UserModel = Depends(get_current_active_user)
 ):
-    # Note: crud_character.update_character_inventory_item should handle the ownership check via character_id
     updated_item_assoc = await crud_character.update_character_inventory_item(
         db=db, character_item_id=character_item_id, item_in=item_update_in, character_id=character_id 
     )
-    if updated_item_assoc is None: # This implies not found, not owned, or deleted due to quantity
+    if updated_item_assoc is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inventory item not found for this character or removed due to quantity.")
     return updated_item_assoc
 
 @router.delete("/{character_id}/inventory/{character_item_id}", response_model=CharacterItemSchema)
-# ... (existing remove_item_from_inventory code) ...
 async def remove_item_from_inventory(
+    # ... (existing implementation) ...
     character_id: int,
     character_item_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: UserModel = Depends(get_current_active_user)
 ):
-    # Note: crud_character.remove_item_from_character_inventory should handle ownership via character_id
     deleted_item_assoc = await crud_character.remove_item_from_character_inventory(
         db=db, character_item_id=character_item_id, character_id=character_id
     )
@@ -214,15 +217,17 @@ async def remove_item_from_inventory(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Inventory item not found for this character or not authorized to delete")
     return deleted_item_assoc
 
-# --- Character Spell Management Endpoints (Your existing ones) ---
-# router.post("/{character_id}/spells", response_model=CharacterSpellSchema, status_code=status.HTTP_201_CREATED) ...
-# ... (Ensure your existing spell management endpoints for characters are here) ...
+# --- Character Spell Management Endpoints (Your existing ones - ensure they are complete) ---
+# Presuming you have endpoints like:
+# POST /{character_id}/spells - to add a spell to known_spells directly (might need review against level-up logic)
+# PUT /{character_id}/spells/{character_spell_id} - to update is_prepared for known spell (for prepared casters)
+# DELETE /{character_id}/spells/{character_spell_id} - to remove a spell
 
 
-# --- Leveling Up, Hit Dice, and Death Saves Endpoints ---
+# --- Leveling Up, Hit Dice, and Death Saves Endpoints (Existing) ---
 @router.post("/{character_id}/level-up/confirm-hp", response_model=CharacterHPLevelUpResponse)
-# ... (existing confirm_character_hp_on_level_up code, ensure it's present and correct) ...
 async def confirm_character_hp_on_level_up(
+    # ... (existing implementation) ...
     character_id: int,
     hp_request: CharacterHPLevelUpRequest,
     db: AsyncSession = Depends(get_db),
@@ -246,38 +251,63 @@ async def confirm_character_hp_on_level_up(
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-# --- NEW ENDPOINT for ASI Selection ---
 @router.post("/{character_id}/level-up/select-asi", response_model=CharacterSchema)
 async def select_character_asi_on_level_up(
+    # ... (existing implementation) ...
     character_id: int,
-    asi_in: ASISelectionRequest, # Expects e.g. {"stat_increases": {"strength": 2}} or {"dexterity": 1, "constitution": 1}
+    asi_in: ASISelectionRequest,
     db: AsyncSession = Depends(get_db),
     current_user: UserModel = Depends(get_current_active_user)
 ):
-    """
-    Allows a player to select their Ability Score Increases (ASIs)
-    when their character has a pending ASI choice during level up.
-    """
     db_character = await crud_character.get_character(db=db, character_id=character_id)
     if not db_character or db_character.user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND if not db_character else status.HTTP_403_FORBIDDEN,
                             detail="Character not found or not authorized")
-
     if db_character.level_up_status != "pending_asi":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Character is not pending ASI selection. Current status: {db_character.level_up_status}")
-
     try:
         updated_character = await crud_character.apply_character_asi(
             db=db, character=db_character, asi_selection=asi_in
         )
         return updated_character
-    except ValueError as e: # Catch validation errors from CRUD (e.g., invalid ASI choice, stat cap)
+    except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-# --- END NEW ASI ENDPOINT ---
 
+# --- NEW ENDPOINT for Sorcerer Spell Selection on Level Up ---
+@router.post("/{character_id}/level-up/select-spells", response_model=CharacterSchema)
+async def select_sorcerer_spells_on_level_up( # Function name updated for clarity
+    character_id: int,
+    spell_selection_in: SorcererSpellSelectionRequest, # Request body
+    db: AsyncSession = Depends(get_db),
+    current_user: UserModel = Depends(get_current_active_user)
+):
+    """
+    Allows a player to select spells for their Sorcerer character
+    when their character has a pending spell selection choice during level up.
+    """
+    db_character = await crud_character.get_character(db=db, character_id=character_id)
+    if not db_character or db_character.user_id != current_user.id: # Ownership check
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND if not db_character else status.HTTP_403_FORBIDDEN,
+                            detail="Character not found or not authorized")
+
+    if not db_character.character_class or db_character.character_class.lower() != "sorcerer":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This spell selection is for Sorcerer class characters only.")
+        
+    if db_character.level_up_status != "pending_spells":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Character is not pending spell selection. Current status: {db_character.level_up_status}")
+
+    try:
+        updated_character = await crud_character.apply_sorcerer_spell_selections(
+            db=db, character=db_character, spell_selection=spell_selection_in
+        )
+        return updated_character
+    except ValueError as e: # Catch validation errors from CRUD
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+# --- END NEW SPELL SELECTION ENDPOINT ---
+
+# ... (spend_hit_die, death_save, reset_death_saves endpoints as before) ...
 @router.post("/{character_id}/spend-hit-die", response_model=CharacterSchema)
-# ... (existing spend_character_hit_die_endpoint code) ...
-async def spend_character_hit_die_endpoint(
+async def spend_character_hit_die_endpoint( # ... (existing code)
     character_id: int,
     spend_request: SpendHitDieRequest, 
     db: AsyncSession = Depends(get_db),
@@ -295,17 +325,15 @@ async def spend_character_hit_die_endpoint(
     except ValueError as e: 
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-
 @router.post("/{character_id}/death-saves", response_model=CharacterSchema)
-# ... (existing record_character_death_save code) ...
-async def record_character_death_save(
+async def record_character_death_save( # ... (existing code)
     character_id: int,
     save_request: RecordDeathSaveRequest, 
     db: AsyncSession = Depends(get_db),
     current_user: UserModel = Depends(get_current_active_user)
 ):
     db_character = await crud_character.get_character(db=db, character_id=character_id)
-    if not db_character or db_character.user_id != current_user.id:
+    if not db_character or db_character.user_id != current_user.id: 
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND if not db_character else status.HTTP_403_FORBIDDEN,
                             detail="Character not found or not authorized")
     updated_character = await crud_character.record_death_save(
@@ -314,8 +342,7 @@ async def record_character_death_save(
     return updated_character
 
 @router.post("/{character_id}/reset-death-saves", response_model=CharacterSchema)
-# ... (existing reset_character_death_saves_endpoint code) ...
-async def reset_character_death_saves_endpoint(
+async def reset_character_death_saves_endpoint( # ... (existing code)
     character_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: UserModel = Depends(get_current_active_user)

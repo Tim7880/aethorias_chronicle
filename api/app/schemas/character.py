@@ -5,10 +5,9 @@ from datetime import datetime
 
 from .skill import CharacterSkill as CharacterSkillSchema
 from .item import CharacterItem as CharacterItemSchema
-from .character_spell import CharacterSpell as CharacterSpellSchema 
+from .character_spell import CharacterSpell as CharacterSpellSchema # <--- ENSURE THIS IS IMPORTED
 
 class CharacterBase(BaseModel):
-    # ... (CharacterBase as before) ...
     name: str = Field(..., min_length=1, max_length=100)
     race: Optional[str] = Field(None, max_length=50)
     character_class: Optional[str] = Field(None, max_length=50)
@@ -33,6 +32,7 @@ class CharacterBase(BaseModel):
     death_save_successes: Optional[int] = Field(0, ge=0, le=3)
     death_save_failures: Optional[int] = Field(0, ge=0, le=3)
     level_up_status: Optional[str] = Field(None, max_length=50)
+
     @model_validator(mode='after')
     def check_stats_based_on_tier(cls, data):
         # ... (your existing validator logic) ...
@@ -64,12 +64,12 @@ class CharacterBase(BaseModel):
                 raise ValueError(f"Remaining Hit Dice ({data.hit_dice_remaining}) cannot exceed Total Hit Dice ({data.hit_dice_total}).")
         return data
 
-
 class CharacterCreate(CharacterBase):
-    pass
+    chosen_cantrip_ids: Optional[List[int]] = Field(None, description="List of spell IDs for initial cantrips (e.g., for Sorcerers at L1).")
+    chosen_initial_spell_ids: Optional[List[int]] = Field(None, description="List of spell IDs for initial L1 spells known (e.g., for Sorcerers at L1).")
 
 class CharacterUpdate(BaseModel): 
-    # ... (CharacterUpdate as before) ...
+    # ... (CharacterUpdate as before - without level, xp, hit_die_type, hit_dice_total, level_up_status) ...
     name: Optional[str] = Field(None, min_length=1, max_length=100)
     race: Optional[str] = Field(None, max_length=50)
     character_class: Optional[str] = Field(None, max_length=50) 
@@ -113,6 +113,7 @@ class CharacterUpdate(BaseModel):
                 raise ValueError(f"Max Hit Points ({data.hit_points_max}) cannot exceed {max_hp_allowed} for this tier status ({effective_is_ascended}).")
         return data
 
+
 class CharacterInDBBase(CharacterBase):
     id: int
     user_id: int 
@@ -145,8 +146,7 @@ class RecordDeathSaveRequest(BaseModel):
 class ASISelectionRequest(BaseModel):
     stat_increases: Dict[str, int] = Field(..., description="Dictionary of stats to increase and by how much. E.g., {'strength': 2} or {'dexterity': 1, 'constitution': 1}")
     @model_validator(mode='after')
-    def check_asi_rules(cls, data):
-        # ... (your ASI validator as before) ...
+    def check_asi_rules(cls, data): # ... (your ASI validator as before) ...
         if data is None or not data.stat_increases: raise ValueError("stat_increases must be provided and contain data.")
         total_points_used = 0; stats_affected_count = 0
         valid_stat_names = {"strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"}
@@ -166,30 +166,19 @@ class ASISelectionRequest(BaseModel):
         elif stats_affected_count == 0 and total_points_used != 2 : raise ValueError("stat_increases cannot be empty if total points used is not 2.")
         return data
 
-
-# --- NEW SCHEMA for Sorcerer Spell Selection on Level Up ---
 class SorcererSpellSelectionRequest(BaseModel):
-    # Sorcerers learn one new spell of their choice when they level up (if spells known increases)
-    # This spell must be of a level for which they have spell slots.
-    new_spell_learned_id: Optional[int] = Field(None, description="ID of the new spell chosen to learn. Required if spells known increases.")
-
-    # Additionally, they can replace one known spell with another from the sorcerer spell list.
+    new_leveled_spell_ids: Optional[List[int]] = Field(None, description="List of IDs for new LEVELED spells chosen to learn.")
     spell_to_replace_id: Optional[int] = Field(None, description="ID of a currently known spell to replace (optional).")
     replacement_spell_id: Optional[int] = Field(None, description="ID of the new spell to learn in place of the replaced one (required if spell_to_replace_id is provided).")
+    chosen_cantrip_ids_on_level_up: Optional[List[int]] = Field(None, description="List of new cantrip IDs if character gains cantrips at this level.")
+
 
     @model_validator(mode='after')
     def check_replacement_logic(cls, data):
         if data is None: return data
         if data.spell_to_replace_id is not None and data.replacement_spell_id is None:
-            raise ValueError("If replacing a spell, 'replacement_spell_id' must be provided.")
+            raise ValueError("If replacing a spell ('spell_to_replace_id' is provided), 'replacement_spell_id' must also be provided.")
         if data.spell_to_replace_id is None and data.replacement_spell_id is not None:
-            raise ValueError("If providing a replacement spell, 'spell_to_replace_id' must also be provided.")
-        if data.new_spell_learned_id is None and data.spell_to_replace_id is None:
-             # This check might be too strict if a level up doesn't grant a new spell AND they don't want to replace one.
-             # However, a sorcerer *usually* gains a spell known or can replace one.
-             # Let's assume at least one action (learn new or replace) is expected if spells_known increases or they choose to swap.
-             # The API endpoint logic will be more nuanced based on actual spells_known count.
-             # For now, this just ensures consistency if replacement is attempted.
-             pass # It's possible a level up doesn't grant a new spell and they don't replace.
+            raise ValueError("If providing a replacement spell ('replacement_spell_id'), 'spell_to_replace_id' must also be provided to indicate which spell is being replaced.")
         return data
 
