@@ -1,0 +1,73 @@
+/* Path: src/index.css */
+
+/* Basic Reset (Optional, but good practice) */
+body, h1, h2, h3, h4, h5, h6, p, blockquote, pre,
+dl, dd, ol, ul, figure,
+fieldset, legend {
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  box-sizing: border-box;
+}
+*, *:before, *:after {
+  box-sizing: inherit;
+}
+/* End Basic Reset */
+
+body {
+  margin: 0;
+  font-family: 'IM Fell English', Georgia, serif; /* Default body font */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  background-color: #FBF0D9; /* Our base creamy parchment color */
+  /* For a texture, you'd download/create a seamless parchment texture image, 
+    place it in public/ or src/assets/, and use:
+    background-image: url('/parchment_texture_tile.png'); 
+    background-repeat: repeat;
+  */
+
+  color: #3a291c; /* Default dark sepia/brown "ink" for text */
+  line-height: 1.6;
+
+  /* This is a very simple way to hint at a central "pool of light" for the whole page.
+     More advanced effects would use pseudo-elements or specific container styling. */
+  background-image: radial-gradient(circle at center top, 
+      rgba(255, 245, 220, 0.7) 0%,  /* Brighter, slightly more yellow center top */
+      rgba(251, 240, 217, 0.4) 40%, /* Mid-tone parchment */
+      rgba(245, 230, 200, 0.1) 75%,  /* Fading to base parchment */
+      #FBF0D9 100% /* Ensuring the base color is hit */
+  );
+  min-height: 100vh; /* Ensure background covers full viewport height */
+}
+
+/* Define font variables for easier use (optional but recommended) */
+:root {
+  --font-heading-ornate: 'Great Vibes', cursive;
+  --font-body-primary: 'IM Fell English', Georgia, serif;
+  --font-script-annotation: 'MedievalSharp', cursive;
+  --font-handwritten-input: 'Dancing Script', cursive;
+  --font-decorative-special: 'Lavishly Yours', cursive;
+
+  --ink-color-dark: #3a291c;
+  --ink-color-medium: #5a392c;
+  --ink-color-light: #6a493c;
+
+  --parchment-bg: #FBF0D9;
+  --parchment-highlight: #FFF5E0; /* Slightly lighter for highlights */
+}
+
+/* Example of applying a font variable */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading-ornate);
+  color: var(--ink-color-dark);
+  margin-bottom: 0.75em;
+  font-weight: normal; /* Great Vibes is already boldish */
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}

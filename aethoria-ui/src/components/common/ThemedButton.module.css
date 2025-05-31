@@ -1,0 +1,122 @@
+/* Path: src/components/common/ThemedButton.module.css */
+
+.themedButton {
+  display: inline-flex; /* Changed to inline-flex for better alignment of rune/text if needed */
+  align-items: center;
+  justify-content: center;
+  position: relative; /* For tooltip positioning */
+  
+  min-width: 40px; /* Ensure a decent clickable area */
+  min-height: 40px;
+  padding: 8px; /* Adjust padding for desired seal size */
+  border-radius: 50%; /* Makes it circular like a seal */
+  
+  border-width: 2px; /* Wax seal often has a thicker, slightly irregular edge */
+  border-style: solid;
+  
+  font-family: var(--font-script-annotation); /* For any potential text or the tooltip */
+  color: var(--parchment-highlight); /* Rune color - can be overridden */
+  
+  cursor: pointer;
+  transition: transform 0.1s ease-out, box-shadow 0.2s ease, background-color 0.2s ease;
+  text-align: center;
+  outline: none;
+  user-select: none; /* Prevent text selection of the rune */
+}
+
+.waxSeal {
+  /* Conceptual wax texture - ideally a subtle background image or SVG filter */
+  /* For now, solid color with shadow */
+  box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.3), /* Base shadow */
+              inset 0px 0px 2px rgba(0, 0, 0, 0.2); /* Slight inner shadow for depth */
+}
+
+.redSeal {
+  background-color: #a02c2c; /* Deep red for wax (from our button brief) */
+  border-color: #701e1e; /* Darker edge for red wax */
+}
+
+.greenSeal {
+  background-color: #2c6b3f; /* Forest green for wax */
+  border-color: #1e4a2c; /* Darker edge for green wax */
+}
+
+.runeSymbol {
+  font-size: 1.6em; /* Adjust size of the rune character */
+  color: #FFD700; /* Gold-ish color for the rune itself (from our button brief) */
+  text-shadow: 0 0 3px rgba(255, 223, 0, 0.7), /* Base glow */
+               0 0 6px rgba(255, 176, 0, 0.5); /* Softer outer glow */
+  line-height: 1;
+  display: inline-block;
+  transition: text-shadow 0.2s ease-in-out, color 0.2s ease-in-out;
+}
+
+/* Hover State */
+.themedButton:hover {
+  transform: translateY(-1px); /* Slight lift */
+  box-shadow: 2px 3px 6px rgba(0, 0, 0, 0.35), /* Enhanced shadow */
+              inset 0px 0px 3px rgba(0, 0, 0, 0.25);
+}
+
+.themedButton:hover .runeSymbol {
+  text-shadow: 0 0 5px #FFFFFF, /* Brighter inner glow */
+               0 0 10px #FFD700, /* Enhanced gold glow */
+               0 0 15px #FFB000; /* Wider outer glow */
+  color: #FFFACD; /* Lemon chiffon - brighter rune on hover */
+  /* Add particle effect conceptually - would need JS or more complex CSS animation */
+}
+
+/* Active/Pressed State */
+.themedButton:active {
+  transform: translateY(1px); /* Press down effect */
+  box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4), /* Reduced shadow */
+              inset 0px 0px 4px rgba(0, 0, 0, 0.3);
+}
+
+.themedButton:active .runeSymbol {
+  text-shadow: 0 0 2px #FFB000, /* Slightly dimmed flare */
+               0 0 4px #FF8C00; 
+  color: #FFD700; /* Back to gold or slightly less bright */
+}
+
+/* Disabled State */
+.themedButton:disabled {
+  background-color: #777777; /* Duller grey */
+  border-color: #555555;
+  box-shadow: inset 0px 0px 2px rgba(0, 0, 0, 0.2);
+  cursor: not-allowed;
+  transform: translateY(0); /* No lift */
+}
+
+.themedButton:disabled .runeSymbol {
+  color: #aaaaaa; /* Dimmed rune */
+  text-shadow: none; /* No glow */
+}
+
+
+/* Tooltip for Button (simple CSS tooltip) */
+.tooltipText {
+  visibility: hidden;
+  min-width: 100px; /* Adjust as needed */
+  max-width: 200px;
+  background-color: var(--ink-color-dark); /* Use CSS variable */
+  color: var(--parchment-highlight);    /* Use CSS variable */
+  text-align: center;
+  border-radius: 4px;
+  padding: 6px 8px;
+  position: absolute;
+  z-index: 10;
+  bottom: 115%; /* Position above the button */
+  left: 50%;
+  transform: translateX(-50%); /* Center the tooltip */
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+  font-family: var(--font-script-annotation); /* Using MedievalSharp */
+  font-size: 0.9em;
+  white-space: nowrap; /* Keep tooltip on one line if short, or adjust */
+}
+
+.themedButton:hover .tooltipText {
+  visibility: visible;
+  opacity: 1;
+}
