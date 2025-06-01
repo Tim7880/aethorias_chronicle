@@ -1,0 +1,292 @@
+/* Path: src/pages/CharacterSheetPage.module.css */
+
+.pageStyle { 
+    padding: 20px; 
+    font-family: var(--font-body-primary); 
+    color: var(--ink-color-dark); 
+}
+
+.sheetContainerWithWavyEffect { /* Your outer container */
+    position: relative; /* Crucial for positioning the ::before pseudo-element */
+    max-width: 1000px;
+    margin: 30px auto; 
+    /* No background, filter, or direct box-shadow here anymore */
+    /* Padding on this outer element will create space around the pseudo-element if filter "eats" edges */
+    /* Or, make pseudo-element slightly larger with negative margins if needed */
+    /* Let's try without explicit padding here first, relying on .sheetContent padding */
+    border-radius: 3px; /* For the overall shape if ::before doesn't perfectly conform */
+}
+
+.sheetContainerWithWavyEffect::before {
+    content: "";
+    position: absolute;
+    top: 0; 
+    left: 0; 
+    right: 0; 
+    bottom: 0;
+    z-index: -1; /* Place it behind the .sheetContent */
+    
+    background-color: #fffef0; /* Light parchment from Giffyglyph example */
+    background-image: url(data:image/png;base64,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);
+    background-blend-mode: multiply; 
+    
+    border-radius: inherit; /* Inherit radius from parent for the shape */
+    
+    filter: url(#wavyEdgeEffect); 
+    
+    box-shadow: 2px 3px 20px rgba(0, 0, 0, 0.4), 
+                0 0 100px rgba(143, 89, 34, 0.7) inset; /* Adjusted inset shadow opacity */
+}
+
+.sheetContent {
+    padding: 25px 35px; 
+    position: relative; /* To ensure it sits on top of the ::before pseudo-element */
+    z-index: 1; 
+    /* This div should NOT have a background-color if you want the ::before to show through.
+       Or, if you want layered paper, give this its own clean parchment background.
+       background-color: var(--parchment-highlight); /* For a clean top layer */
+    
+}
+
+.pageHeader {
+    text-align: center;
+    margin-bottom: 25px;
+    border-bottom: 2px double var(--ink-color-light);
+    padding-bottom: 15px;
+}
+
+.pageHeader h1 {
+    font-family: var(--font-heading-ornate);
+    font-size: 3.5em;
+    color: var(--ink-color-dark);
+    margin: 0 0 5px 0;
+}
+
+.pageHeader p {
+    font-size: 1.1em;
+    color: var(--ink-color-medium);
+    line-height: 1.4;
+}
+
+.sectionTitle {
+    font-family: var(--font-heading-ornate); 
+    color: var(--ink-color-dark); 
+    border-bottom: 1px solid var(--ink-color-light); 
+    padding-bottom: 0.4em; 
+    margin-top: 1.5em; 
+    margin-bottom: 1em; 
+    font-size: 2.2em;
+    text-align: left;
+}
+.sectionTitle:first-child { /* No top margin for the very first section title in a box */
+    margin-top: 0;
+}
+
+
+.levelUpNotification {
+    text-align: center; 
+    margin-bottom: 25px; 
+    padding: 15px; 
+    background-color: var(--ink-color-medium); 
+    border-radius: 5px;
+    box-shadow: 0px 3px 8px rgba(0,0,0,0.25);
+}
+
+.levelUpLink {
+    color: var(--parchment-bg); 
+    text-decoration: none; 
+    font-family: var(--font-script-annotation); 
+    font-size: 1.5em;
+    font-weight: bold;
+    display: inline-block;
+    padding: 10px 18px;
+    border: 1px solid var(--parchment-bg);
+    border-radius: 4px;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.levelUpLink:hover {
+    background-color: var(--parchment-bg);
+    color: var(--ink-color-medium);
+}
+
+/* Grid for major layout sections if needed, e.g., abilities and combat side-by-side */
+.mainGridContainer {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); /* Flexible columns */
+    gap: 25px;
+    margin-bottom: 25px;
+}
+
+/* For individual content boxes */
+.box {
+    border: 1px dashed var(--ink-color-light);
+    border-radius: 6px;
+    padding: 20px;
+    background-color: rgba(251, 240, 217, 0.15); 
+    margin-bottom: 25px; /* Added margin for boxes that are full width */
+}
+.box:last-child {
+    margin-bottom: 0;
+}
+
+
+/* Ability Scores Specific Layout */
+.abilitiesSection {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr); /* Creates 6 equal columns */
+    gap: 10px; /* Adjust gap as needed */
+    margin-bottom: 20px; /* Space below the ability scores block */
+}
+.abilityScoreBox {
+    border: 1px solid var(--ink-color-light);
+    background-color: rgba(0,0,0,0.02);
+    border-radius: 6px;
+    padding: 10px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-around; 
+    min-height: 100px; 
+}
+.abilityScoreLabel { /* STR, DEX etc. */
+    font-family: var(--font-script-annotation); 
+    font-size: 1.1em;
+    color: var(--ink-color-medium);
+    text-transform: uppercase;
+    margin-bottom: 5px;
+}
+.abilityScoreValue { /* 14, 10 etc. */
+    font-family: var(--font-body-primary); 
+    font-size: 2.2em; 
+    font-weight: bold;
+    color: var(--ink-color-dark);
+    line-height: 1;
+}
+.abilityScoreModifier { /* +2, -1 etc. */
+    font-family: var(--font-body-primary);
+    font-size: 1.2em;
+    color: var(--ink-color-dark);
+    border: 1px solid var(--ink-color-medium);
+    background-color: var(--parchment-bg);
+    border-radius: 50%; 
+    min-width: 36px; 
+    height: 36px;
+    line-height: 34px; 
+    margin-top: 8px;
+    box-shadow: 0px 1px 2px rgba(0,0,0,0.1);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Generic list styling for stats */
+.statList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.statItem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px dotted rgba(58, 41, 28, 0.3); /* More visible dotted line */
+    font-size: 1.1em;
+}
+
+.statItem:last-child {
+    border-bottom: none;
+}
+
+.statItemLabel { /* Can be used for labels within statItem if needed */
+    font-weight: bold;
+    color: var(--ink-color-medium);
+    margin-right: 10px;
+}
+
+.statItemValue { /* Can be used for values if separate from label span */
+    color: var(--ink-color-dark);
+}
+
+
+.centeredText {
+    text-align: center;
+}
+
+.descriptionBox {
+    white-space: pre-wrap;
+    min-height: 60px;
+    padding: 10px;
+    background-color: rgba(0,0,0,0.03); /* Slightly different tint */
+    border-radius: 4px;
+    border: 1px solid rgba(58, 41, 28, 0.1);
+    line-height: 1.5;
+    margin-top: 5px;
+}
+
+.skillsListThreeColumn {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    columns: 3; /* Changed to 3 columns */
+    column-gap: 20px; /* Adjusted gap slightly if needed */
+    -webkit-columns: 3;
+    -moz-columns: 3;   
+}
+
+.skillItem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px dotted rgba(58, 41, 28, 0.15);
+}
+.skillItem:last-child {
+    border-bottom: none;
+}
+.skillNameContainer {
+    display: flex;
+    align-items: center;
+}
+.skillProficiencySymbol {
+    margin-right: 8px;
+    font-weight: bold;
+    min-width: 12px; /* Ensure alignment */
+    display: inline-block;
+    text-align: center;
+    color: var(--ink-color-dark);
+}
+.skillExpertiseSymbol {
+    margin-right: 5px;
+    font-weight: bold;
+    color: var(--ink-color-medium); 
+    min-width: 10px; /* Ensure alignment */
+    display: inline-block;
+    text-align: center;
+}
+.skillAbilityHint {
+    font-size: 0.8em;
+    color: #777;
+    margin-left: 5px;
+}
+
+.errorText { 
+    color: #a02c2c; /* Keeping your red */
+    text-align: center; 
+    padding: 10px; 
+    border: 1px solid #a02c2c; 
+    border-radius: 4px; 
+    background-color: rgba(255,0,0,0.05); 
+    margin-top: 1em;
+}
+.successText { 
+    color: var(--ink-color-dark); 
+    background-color: rgba(0,128,0,0.1); 
+    padding: 10px; 
+    border-radius: 4px; 
+    margin-top: 1em; 
+    border: 1px solid green;
+}
