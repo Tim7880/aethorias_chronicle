@@ -1,0 +1,51 @@
+/* Path: src/components/common/ThemedInput.module.css */
+
+.inputGroup {
+  margin-bottom: 1.2em; /* Space below each input group */
+  display: flex;
+  flex-direction: column; /* Label above input */
+}
+
+.inputLabel {
+  display: block;
+  font-family: var(--font-script-annotation); /* e.g., MedievalSharp */
+  font-size: 1.1em; 
+  color: var(--ink-color-medium); 
+  margin-bottom: 0.4em;
+  text-align: left; /* Align label text to the left */
+}
+
+.themedInput {
+  font-family: var(--font-handwritten-input); /* e.g., Dancing Script or Fairwater Script Light */
+  font-size: 1.5em; /* Based on your typography showcase preference */
+  color: var(--ink-color-dark);
+
+  background-color: rgba(245, 235, 215, 0.4); /* Slightly darker than parchment_inset for indentation */
+  border: 1px solid rgba(220, 210, 190, 0.7); /* Softer border for indentation */
+  padding: 0.6em 0.9em;
+  border-radius: 3px; /* Softened edges */
+  box-shadow: inset 1px 1px 4px rgba(0,0,0,0.08); /* Subtle inner shadow for depth */
+
+  width: 100%; /* Make input take full width of its container */
+  box-sizing: border-box; /* Ensure padding and border are included in width */
+  transition: background-color 0.3s, box-shadow 0.3s, border-color 0.3s;
+
+  /* For the quill tip cursor, you'd need a .cur or .png file.
+     This is a placeholder, actual path needed.
+     cursor: url('/path/to/your/quill_tip_cursor.cur'), auto; 
+  */
+}
+
+.themedInput::placeholder {
+  color: var(--ink-color-light);
+  font-family: var(--font-body-primary); /* Or a less scripty font for placeholder */
+  font-style: italic;
+  opacity: 0.7;
+}
+
+.themedInput:focus {
+  background-color: rgba(250, 245, 230, 0.6); /* Field brightens */
+  border-color: #c8a064; /* Amber-like glow for border */
+  box-shadow: inset 1px 1px 4px rgba(0,0,0,0.08), 0 0 5px rgba(200, 160, 100, 0.5); /* Subtle outer amber glow */
+  outline: none; /* Remove default browser outline */
+}

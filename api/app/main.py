@@ -1,5 +1,6 @@
 # Path: api/app/main.py
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 
 from app.core.config import settings
@@ -45,6 +46,23 @@ app = FastAPI(
     title=settings.PROJECT_NAME,
     version="0.0.1",
     lifespan=lifespan
+)
+
+# --- ADD CORS MIDDLEWARE ---
+# List of origins that are allowed to make requests.
+# For development, this will be your Vite frontend development server.
+origins = [
+    "http://localhost:5173", # Your Vite frontend
+    "http://127.0.0.1:5173", # Also add this for consistency
+    # Add any other origins you might use (e.g., deployed frontend URL later)
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins, # Allows specific origins
+    allow_credentials=True, # Allows cookies to be included in requests (not strictly needed for JWT in headers but good practice)
+    allow_methods=["*"],    # Allows all methods (GET, POST, PUT, DELETE, etc.)
+    allow_headers=["*"],    # Allows all headers
 )
 
 # Include routers

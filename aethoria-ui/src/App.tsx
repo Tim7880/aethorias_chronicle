@@ -1,44 +1,131 @@
 // Path: src/App.tsx
-import './App.css'; // Keep or modify for App-specific layout if needed
-import ThemedButton from './components/common/ThemedButton'; // Import your button
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Link, Outlet, useLocation, NavLink } from 'react-router-dom'; 
+import LoginPage from './pages/LoginPage';
+import DashboardPage from './pages/DashboardPage';
+import LandingPage from './pages/LandingPage';
+import ProtectedRoute from './components/auth/ProtectedRoute'; // <--- IMPORT ProtectedRoute
+import './App.css'; 
 
-function App() {
-  const handleClick = () => {
-    alert('Rune button clicked!');
+const AuthenticatedLayout: React.FC = () => {
+  const location = useLocation();
+  const auth = useAuth(); // We'll use this for the Logout button
+
+  const handleLogout = () => {
+    if (auth) {
+      auth.logout();
+      // Navigate to home or login after logout.
+      // The ProtectedRoute will handle redirecting from dashboard if logout occurs.
+      // For now, AuthContext's logout just clears state. 
+      // Navigation after logout can be handled in components or here.
+      // Let's assume for now logout from AuthContext will also trigger a navigation if needed
+      // or ProtectedRoute will pick up the isAuthenticated === false state.
+    }
   };
 
   return (
-    <div className="App" style={{ padding: '50px', display: 'flex', gap: '20px', alignItems: 'center' }}>
-      <ThemedButton 
-        onClick={handleClick} 
-        runeSymbol="✔" 
-        variant="green" 
-        tooltipText="Confirm Action"
-        aria-label="Confirm" // Good for accessibility
-      />
-      <ThemedButton 
-        onClick={() => alert('Cancel Clicked!')} 
-        runeSymbol="✖" 
-        variant="red" 
-        tooltipText="Cancel or Close"
-        aria-label="Cancel"
-      />
-      <ThemedButton 
-        onClick={() => alert('Save Clicked!')} 
-        runeSymbol="💾" // Example: floppy disk (might not fit theme) or another rune
-        tooltipText="Save Progress"
-        aria-label="Save"
-        disabled 
-      />
-       <ThemedButton 
-        onClick={() => alert('Next Clicked!')} 
-        runeSymbol="→" 
-        variant="green" 
-        tooltipText="Next Step"
-        aria-label="Next"
-      />
+    <div>
+      <nav style={{ 
+          padding: '10px 20px', 
+          backgroundColor: 'rgba(58, 41, 28, 0.08)', 
+          marginBottom: '20px', 
+          borderBottom: '1px solid rgba(58, 41, 28, 0.2)' 
+        }}>
+        <ul style={{ listStyle: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 0, margin: 0 }}>
+          <div style={{ display: 'flex', gap: '20px' }}>
+            <li>
+              <NavLink 
+                to="/" 
+                style={({ isActive }) => ({
+                  fontFamily: 'var(--font-body-primary)',
+                  color: isActive && location.pathname === "/" ? 'var(--ink-color-dark)' : 'var(--ink-color-medium)', 
+                  textDecoration: 'none',
+                  fontWeight: isActive && location.pathname === "/" ? 'bold' : 'normal',
+                  cursor: isActive && location.pathname === "/" ? 'default' : 'pointer'
+                })}
+              >
+                Home
+              </NavLink>
+            </li>
+            {location.pathname !== "/dashboard" && (
+              <li>
+                <NavLink 
+                  to="/dashboard" 
+                  style={({ isActive }) => ({
+                    fontFamily: 'var(--font-body-primary)',
+                    color: isActive ? 'var(--ink-color-dark)' : 'var(--ink-color-medium)',
+                    textDecoration: 'none',
+                    fontWeight: isActive ? 'bold' : 'normal',
+                    cursor: isActive ? 'default' : 'pointer'
+                  })}
+                >
+                  Dashboard
+                </NavLink>
+              </li>
+            )}
+            {/* Add other primary authenticated links here */}
+          </div>
+          <div style={{ display: 'flex', gap: '20px' }}>
+            {auth.isAuthenticated && auth.user && ( // Show username if logged in
+              <li style={{fontFamily: 'var(--font-body-primary)', color: 'var(--ink-color-dark)'}}>
+                Scribe: {auth.user.username}
+              </li>
+            )}
+            <li>
+              <span 
+                onClick={handleLogout} 
+                style={{fontFamily: 'var(--font-body-primary)', color: 'var(--ink-color-medium)', cursor: 'pointer'}}
+                tabIndex={0} // Make it focusable
+                onKeyPress={(e) => { if (e.key === 'Enter') handleLogout(); }} // Keyboard accessible
+              >
+                Logout
+              </span>
+            </li>
+          </div>
+        </ul>
+      </nav>
+      <Outlet /> 
     </div>
+  );
+};
+
+// Need to import useAuth for AuthenticatedLayout
+import { useAuth } from './contexts/AuthContext';
+
+
+function App() {
+  return (
+    <Router>
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/" element={<LandingPage />} /> 
+        <Route path="/login" element={<LoginPage />} /> 
+        {/* <Route path="/register" element={<RegisterPage />} /> */}
+
+        {/* Protected Routes Group */}
+        <Route element={<ProtectedRoute />}> {/* Wrap authenticated routes with ProtectedRoute */}
+          <Route element={<AuthenticatedLayout />}> {/* AuthenticatedLayout is now a child of ProtectedRoute */}
+            <Route path="/dashboard" element={<DashboardPage />} /> 
+            {/* Add other authenticated routes here as children, e.g.: */}
+            {/* <Route path="/characters" element={<CharacterListPage />} /> */}
+            {/* <Route path="/campaigns" element={<CampaignListPage />} /> */}
+          </Route>
+        </Route>
+
+        {/* Catch-all for undefined routes */}
+        <Route path="*" element={
+          <div style={{textAlign: 'center', paddingTop: '50px'}}>
+            <h1 style={{fontFamily: 'var(--font-heading-ornate)'}}>404 - Page Not Found</h1>
+            <p style={{fontFamily: 'var(--font-body-primary)'}}>
+              The chronicle page you seek is lost to the mists of time.
+            </p>
+            <Link to="/" style={{fontFamily: 'var(--font-body-primary)', color: 'var(--ink-color-dark)'}}>Return to the Landing Page</Link>
+          </div>
+        } />
+      </Routes>
+    </Router>
   );
 }
 
 export default App;
+
