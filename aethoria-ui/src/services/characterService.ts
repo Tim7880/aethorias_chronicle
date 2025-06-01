@@ -1,6 +1,6 @@
 // Path: src/services/characterService.ts
-import type { Character, CharacterHPLevelUpResponse } from '../types/character'; 
-import type { ExpertiseSelectionRequest } from '../types/character'; // Assuming ExpertiseSelectionRequest is in schemas/character.ts
+import type { Character, CharacterHPLevelUpResponse, ASISelectionRequest } from '../types/character'; 
+import type { ExpertiseSelectionRequest, RogueArchetypeSelectionRequest } from '../types/character'; // Assuming ExpertiseSelectionRequest is in schemas/character.ts
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 
@@ -101,6 +101,62 @@ export const characterService = {
     });
     if (!response.ok) {
       let errorDetail = `Selecting expertise failed: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        if (errorData && errorData.detail) {
+          if (Array.isArray(errorData.detail)) { errorDetail = errorData.detail.map((err: any) => err.msg).join(', ');}
+          else if (typeof errorData.detail === 'string') { errorDetail = errorData.detail;}
+        }
+      } catch (e) {/*ignore json parse error if any*/}
+      throw new Error(errorDetail);
+    }
+    return response.json() as Promise<Character>;
+  },
+  // --- END NEW FUNCTION ---
+
+  selectRogueArchetype: async (
+    token: string,
+    characterId: number,
+    payload: RogueArchetypeSelectionRequest 
+  ): Promise<Character> => {
+    const response = await fetch(`${API_BASE_URL}/characters/${characterId}/level-up/select-archetype`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      let errorDetail = `Selecting archetype failed: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        if (errorData && errorData.detail) {
+          if (Array.isArray(errorData.detail)) { errorDetail = errorData.detail.map((err: any) => err.msg).join(', ');}
+          else if (typeof errorData.detail === 'string') { errorDetail = errorData.detail;}
+        }
+      } catch (e) {/*ignore json parse error if any*/}
+      throw new Error(errorDetail);
+    }
+    return response.json() as Promise<Character>;
+  },
+
+  // --- NEW FUNCTION for ASI Selection ---
+  selectASI: async (
+    token: string,
+    characterId: number,
+    payload: ASISelectionRequest 
+  ): Promise<Character> => {
+    const response = await fetch(`${API_BASE_URL}/characters/${characterId}/level-up/select-asi`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      let errorDetail = `Selecting ASI failed: ${response.status}`;
       try {
         const errorData = await response.json();
         if (errorData && errorData.detail) {

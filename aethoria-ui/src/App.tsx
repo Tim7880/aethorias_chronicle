@@ -8,6 +8,9 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import CreateCharacterPage from './pages/CreateCharacterPage';
 import LevelUpHPPage from './pages/LevelUpHPPage'; 
 import LevelUpExpertisePage from './pages/LevelUpExpertisePage';
+import CharacterSheetPage from './pages/CharacterSheetPage';
+import LevelUpArchetypePage from './pages/LevelUpArchetypePage';
+import LevelUpASIPage from './pages/LevelUpASIPage';
 import './App.css'; 
 
 const AuthenticatedLayout: React.FC = () => {
@@ -111,10 +114,10 @@ function App() {
             <Route path="/dashboard" element={<DashboardPage />} /> 
             <Route path="/create-character" element={<CreateCharacterPage />} />
             <Route path="/character/:characterId/level-up/hp" element={<LevelUpHPPage />} />
-            {/* <Route path="/character/:characterId/level-up/asi" element={<LevelUpASIPage />} /> */}
+            <Route path="/character/:characterId/level-up/asi" element={<LevelUpASIPage />} /> 
             {/* <Route path="/character/:characterId/level-up/spells" element={<LevelUpSpellsPage />} /> */}
             <Route path="/character/:characterId/level-up/expertise" element={<LevelUpExpertisePage />} /> {/* <--- NEW ROUTE */}
-            {/* <Route path="/character/:characterId/level-up/archetype" element={<LevelUpArchetypePage />} /> */}
+            <Route path="/character/:characterId/level-up/archetype" element={<LevelUpArchetypePage />} />
             <Route path="/characters/:characterIdFromRoute/view" element={<CharacterSheetPage />} />
           </Route>
         </Route>
