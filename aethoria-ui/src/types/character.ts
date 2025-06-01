@@ -52,6 +52,12 @@ export interface Character {
   known_spells: CharacterSpell[];   
 }
 
+export interface CharacterHPLevelUpResponse {
+  character: Character; // Uses your main Character interface
+  hp_gained: number;
+  level_up_message: string;
+}
+
 // Note: All placeholder or duplicate definitions for SkillDefinition, CharacterSkill,
 // ItemDefinition, CharacterItem, SpellDefinition, and CharacterSpell
 // have been removed from this file as they are now imported from their
