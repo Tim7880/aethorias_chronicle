@@ -33,7 +33,7 @@ from app.game_data.sorcerer_progression import (
     get_sorcerer_max_spell_level_can_learn
 )
 from app.game_data.rogue_data import RoguishArchetypeEnum, AVAILABLE_ROGUE_ARCHETYPES # For Rogue Archetype
-
+from app.schemas.character import RogueArchetypeSelectionRequest
 # --- XP, Leveling, ASI, Hit Dice, Expertise, Archetype Definitions ---
 XP_THRESHOLDS = { 
     1: 0, 2: 300, 3: 900, 4: 2700, 5: 6500, 6: 14000, 7: 23000, 8: 34000,
@@ -61,6 +61,49 @@ CLASS_ASI_LEVELS_MAP: Dict[str, List[int]] = {
 
 ROGUE_EXPERTISE_LEVELS = [1, 6]
 ROGUE_ARCHETYPE_LEVEL = 3
+
+async def _get_next_level_up_status(character: CharacterModel, db: AsyncSession) -> Optional[str]:
+    """Helper function to determine the next pending level-up status."""
+    char_class_lower = character.character_class.lower() if character.character_class else None
+    current_level = character.level
+
+    # Order of priority for level-up choices:
+    # 1. Rogue Archetype (at L3, if not yet chosen and character is L3+)
+    if is_rogue_archetype_due(char_class_lower, current_level) and not character.roguish_archetype:
+        return "pending_archetype_selection"
+    
+    # 2. ASI (Ability Score Increase)
+    if is_asi_due(char_class_lower, current_level):
+        # TODO: Future - Need a way to track if ASI for *this specific level* was already taken.
+        # For now, if an ASI level is reached and previous steps are done, flag it.
+        return "pending_asi"
+        
+    # 3. Rogue Expertise (L1 handled at creation, this is for L6)
+    if is_rogue_expertise_due(char_class_lower, current_level):
+        # L1 expertise is set during character creation's level_up_status.
+        # This handles L6 expertise.
+        # TODO: Future - Need to check if L6 expertise was already chosen for this level.
+        # Count existing expertises; Rogues get 2 at L1 and 2 more at L6. Total 4 by L6.
+        expert_skills_count = 0
+        if character.skills: # Ensure character.skills is loaded if accessed this way
+            # This requires character.skills to be loaded, get_character() does this.
+            # If character passed in doesn't have skills loaded, this will be 0 or error.
+            # Assuming character object passed in has relationships loaded from get_character()
+            expert_skills_count = sum(1 for sk_assoc in character.skills if sk_assoc.has_expertise)
+
+        if current_level == 1 and expert_skills_count < 2:
+            return "pending_expertise" # Should have been set by create_character
+        if current_level == 6 and expert_skills_count < 4:
+            return "pending_expertise"
+
+    # 4. Sorcerer Spell Selection
+    if char_class_lower == "sorcerer" and \
+       await _sorcerer_gains_cantrip_or_spell_at_level(current_level, db=db, character_id=character.id):
+        return "pending_spells"
+
+    # TODO: Add checks for other class-specific feature choices here
+    
+    return None # All choices for this level up are complete
 
 def get_level_for_xp(xp: int, is_ascended_tier: bool = False) -> int:
     current_level = 0
@@ -138,11 +181,16 @@ async def create_character_for_user(
     character_data["death_save_failures"] = character_data.get("death_save_failures", 0)
     
     # Set initial level_up_status based on L1 features
-    if initial_level == 1 and is_rogue_expertise_due(char_class_lower, initial_level):
+    # Set initial level_up_status based on L1 features
+    if initial_level == 1 and is_rogue_expertise_due(char_class_lower, initial_level) and \
+       not character_data.get("roguish_archetype"): # Rogues choose L1 expertise
         character_data["level_up_status"] = "pending_expertise"
+    # Add other L1 specific choices here if any (e.g. Fighter fighting style)
+    # elif initial_level == 1 and is_fighter_fighting_style_due(char_class_lower, initial_level):
+    #     character_data["level_up_status"] = "pending_fighting_style"
     else:
-        character_data["level_up_status"] = None
-
+        character_data["level_up_status"] = None # Default if no immediate L1 choices
+    # --- END MODIFICATION ---
     # Initial HP calculation
     if character_data.get("hit_points_max") is None: # Only calculate if not provided
         if hit_die_type_value and character_data.get("constitution") is not None:
@@ -276,16 +324,17 @@ async def award_xp_to_character(
         print(f"Character {character.name} (ID: {character.id}) is eligible for level {new_level} (was {character.level})!")
         character.level = new_level 
         character.hit_dice_total = new_level 
-        character.hit_dice_remaining = new_level 
+        character.hit_dice_remaining = new_level # Regain all hit dice on level up
         
+        # --- START MODIFICATION: Set initial status for the new level choices ---
+        # Always start with HP confirmation unless it's an L1 Rogue (handled by creation)
+        # or another L1 immediate choice.
         char_class_lower = character.character_class.lower() if character.character_class else None
-        
-        if is_rogue_expertise_due(char_class_lower, new_level):
-             character.level_up_status = "pending_expertise"
-        elif is_rogue_archetype_due(char_class_lower, new_level) and not character.roguish_archetype:
-            character.level_up_status = "pending_archetype_selection"
-        else: 
-            character.level_up_status = "pending_hp"
+        if new_level == 1 and is_rogue_expertise_due(char_class_lower, new_level): # Should be covered by create_character
+            character.level_up_status = "pending_expertise"
+        else:
+            character.level_up_status = "pending_hp" # HP is always the first step after level number changes
+        # --- END MODIFICATION ---
         
         print(f"Character {character.name} is now level {character.level}. Status: {character.level_up_status}")
     else:
@@ -316,7 +365,7 @@ async def confirm_level_up_hp_increase(
         character.hit_points_max = current_max_hp + hp_gained_this_level
         
     character.hit_points_current = character.hit_points_max
-    
+    character.level_up_status = await _get_next_level_up_status(character, db)
     char_class_lower = character.character_class.lower() if character.character_class else None
     if is_rogue_archetype_due(char_class_lower, character.level) and not character.roguish_archetype:
         character.level_up_status = "pending_archetype_selection"
@@ -351,6 +400,7 @@ async def apply_character_asi(
         setattr(character, stat_name_lower, new_score)
         print(f"Character {character.name} {stat_name_str} increased by {increase_amount} to {new_score}.")
     
+    character.level_up_status = await _get_next_level_up_status(character, db)
     char_class_lower = character.character_class.lower() if character.character_class else None
     if char_class_lower == "sorcerer" and \
          await _sorcerer_gains_cantrip_or_spell_at_level(character.level, db=db, character_id=character.id):
@@ -403,6 +453,8 @@ async def apply_rogue_expertise(
     if updated_skills_count != len(expertise_selection.expert_skill_ids): # Should be 2
         await db.rollback() 
         raise ValueError("Failed to update expertise for all selected skills. Ensure choices are valid.")
+    
+    character.level_up_status = await _get_next_level_up_status(character, db)
 
     # After expertise, determine next state (e.g., L1 Rogue is done with L1 choices)
     # L6 Rogue might have other L6 features or just be done with this expertise choice.
@@ -423,26 +475,33 @@ async def apply_rogue_archetype_selection(
 ) -> CharacterModel:
     if not character.character_class or character.character_class.lower() != "rogue":
         raise ValueError("Archetype selection is for Rogue class characters only.")
-    if character.level < ROGUE_ARCHETYPE_LEVEL:
-        raise ValueError(f"Rogues choose their archetype at level {ROGUE_ARCHETYPE_LEVEL}. Current level: {character.level}")
+    # Check if archetype is due at this level and if one hasn't been selected
+    if not is_rogue_archetype_due(character.character_class, character.level) or character.roguish_archetype is not None:
+        if character.roguish_archetype is not None:
+             raise ValueError(f"Character has already selected the archetype: {character.roguish_archetype.value}")
+        else:
+             raise ValueError(f"Rogue archetype selection is not due at level {character.level}.")
+
     if character.level_up_status != "pending_archetype_selection":
         raise ValueError(f"Character is not pending archetype selection. Current status: {character.level_up_status}")
-    if character.roguish_archetype is not None:
-        raise ValueError(f"Character has already selected the archetype: {character.roguish_archetype.value}")
 
     chosen_archetype_enum: RoguishArchetypeEnum = archetype_selection.archetype_name
-    if chosen_archetype_enum not in AVAILABLE_ROGUE_ARCHETYPES: # Make sure AVAILABLE_ROGUE_ARCHETYPES is imported
+    if chosen_archetype_enum not in AVAILABLE_ROGUE_ARCHETYPES:
         raise ValueError(f"Invalid archetype '{chosen_archetype_enum.value}' selected for Rogue.")
 
     character.roguish_archetype = chosen_archetype_enum
     print(f"Character {character.name} selected archetype: {chosen_archetype_enum.value}.")
 
-    # TODO: Grant specific L3 features based on archetype.
-    # For now, just recording the archetype name.
+    # TODO: Grant specific L3 features based on archetype here.
+    # For example, if chosen_archetype == RoguishArchetypeEnum.ASSASSIN:
+    #   await grant_proficiency(db, character, "disguise_kit_tool_id") # Needs tool proficiency system
+    #   await grant_proficiency(db, character, "poisoners_kit_tool_id")
+    # This requires a system for tracking tool proficiencies and a way to add them.
+    # For Arcane Trickster, it would involve adding spells to their known_spells.
+    # This class-specific feature granting will be a future step.
 
-    # After archetype selection at L3, what's next? ASI is at L4.
-    # So, this level-up stage is complete.
-    character.level_up_status = None 
+    # Determine next status after Archetype selection
+    character.level_up_status = await _get_next_level_up_status(character, db)
     
     print(f"Character {character.name} Rogue archetype selection complete. Level up status: {character.level_up_status}")
     
@@ -627,7 +686,9 @@ async def apply_sorcerer_spell_selections(
     final_known_leveled_spells_q = await db.execute(select(func.count(CharacterSpellModel.id)).join(SpellModel).filter(CharacterSpellModel.character_id == character.id, CharacterSpellModel.is_known == True, SpellModel.level > 0))
     final_known_leveled_spells_count = final_known_leveled_spells_q.scalar_one_or_none() or 0
     if final_known_leveled_spells_count != target_leveled_spells_at_new_level: raise ValueError(f"Incorrect final leveled spells known ({final_known_leveled_spells_count}). Expected: {target_leveled_spells_at_new_level}.")
-    character.level_up_status = None 
+
+    character.level_up_status = await _get_next_level_up_status(character, db)
+
     print(f"Character {character.name} Sorcerer spell selection complete. Level up status: {character.level_up_status}")
     db.add(character); await db.commit(); await db.refresh(character)
     return await get_character(db, character.id)
