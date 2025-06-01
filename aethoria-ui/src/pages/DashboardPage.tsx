@@ -1,88 +1,97 @@
 // Path: src/pages/DashboardPage.tsx
 import React, { useEffect, useState } from 'react';
-import { useAuth } from '../contexts/AuthContext'; // To get user and token
-import { characterService } from '../services/characterService'; // Our new service
-import type { Character } from '../types/character'; // Our Character interface
-import { Link } from 'react-router-dom'; // For linking to character sheets later
-import ThemedButton from '../components/common/ThemedButton'; // Assuming PascalCase import
+import { useAuth } from '../contexts/AuthContext';
+import { characterService } from '../services/characterService';
+import { campaignService } from '../services/campaignService'; // <--- NEW IMPORT
+import type { Character } from '../types/character';
+import type { Campaign } from '../types/campaign'; // <--- NEW IMPORT
+import { Link } from 'react-router-dom';
+import ThemedButton from '../components/common/ThemedButton';
 
 const DashboardPage: React.FC = () => {
   const auth = useAuth();
+
   const [characters, setCharacters] = useState<Character[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const [isLoadingChars, setIsLoadingChars] = useState<boolean>(true);
+  const [charError, setCharError] = useState<string | null>(null);
+
+  const [dmCampaigns, setDmCampaigns] = useState<Campaign[]>([]);
+  const [isLoadingDmCampaigns, setIsLoadingDmCampaigns] = useState<boolean>(true);
+  const [dmCampaignError, setDmCampaignError] = useState<string | null>(null);
+
+  const [playerCampaigns, setPlayerCampaigns] = useState<Campaign[]>([]);
+  const [isLoadingPlayerCampaigns, setIsLoadingPlayerCampaigns] = useState<boolean>(true);
+  const [playerCampaignError, setPlayerCampaignError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchCharacters = async () => {
-      if (auth?.token) { // Check if token is available
-        setIsLoading(true);
-        setError(null);
+    const fetchData = async () => {
+      if (auth?.token && auth?.isAuthenticated) {
+        // Fetch Characters
+        setIsLoadingChars(true);
+        setCharError(null);
         try {
           const userCharacters = await characterService.getCharacters(auth.token);
           setCharacters(userCharacters);
         } catch (err: any) {
-          console.error("Failed to fetch characters:", err);
-          setError(err.message || "Could not load your characters.");
-          // If 401, auth.logout() might be called by authService or a global error handler
+          setCharError(err.message || "Could not load your characters.");
         } finally {
-          setIsLoading(false);
+          setIsLoadingChars(false);
         }
-      } else {
-        // No token, user might not be fully authenticated yet or token cleared
-        // This case should ideally be handled by ProtectedRoute redirecting to login
-        // Or if AuthContext indicates loading, wait.
-        if (!auth?.isLoading) { // Only set error if auth isn't already loading
-            setError("You are not authenticated. Please log in.");
-            setIsLoading(false);
+
+        // Fetch Campaigns as DM
+        setIsLoadingDmCampaigns(true);
+        setDmCampaignError(null);
+        try {
+          const userDmCampaigns = await campaignService.getCampaigns(auth.token, true);
+          setDmCampaigns(userDmCampaigns);
+        } catch (err: any) {
+          setDmCampaignError(err.message || "Could not load your DM campaigns.");
+        } finally {
+          setIsLoadingDmCampaigns(false);
         }
+
+        // Fetch Campaigns as Player
+        setIsLoadingPlayerCampaigns(true);
+        setPlayerCampaignError(null);
+        try {
+          const userPlayerCampaigns = await campaignService.getCampaigns(auth.token, false);
+          setPlayerCampaigns(userPlayerCampaigns);
+        } catch (err: any) {
+          setPlayerCampaignError(err.message || "Could not load campaigns you are in.");
+        } finally {
+          setIsLoadingPlayerCampaigns(false);
+        }
+      } else if (!auth?.isLoading) {
+        setIsLoadingChars(false);
+        setIsLoadingDmCampaigns(false);
+        setIsLoadingPlayerCampaigns(false);
       }
     };
 
-    if (auth?.isAuthenticated) { // Only fetch if authenticated
-        fetchCharacters();
-    } else if (!auth?.isLoading) { // If not loading and not authenticated
-        setIsLoading(false); 
-        // setError("Please log in to see your dashboard."); // Or rely on ProtectedRoute
-    }
-    // Dependency array: re-fetch if auth.token changes (e.g., after login)
-    // or if auth.isAuthenticated changes.
+    fetchData();
   }, [auth?.token, auth?.isAuthenticated, auth?.isLoading]); 
 
-  const pageStyle: React.CSSProperties = {
-    padding: '20px',
-    fontFamily: 'var(--font-body-primary)',
+  const pageStyle: React.CSSProperties = { /* ... same as before ... */ 
+      padding: '20px', fontFamily: 'var(--font-body-primary)',
   };
-
-  const sectionTitleStyle: React.CSSProperties = {
-    fontFamily: 'var(--font-heading-ornate)',
-    color: 'var(--ink-color-dark)',
-    fontSize: '2.5em',
-    borderBottom: '1px solid var(--ink-color-light)',
-    paddingBottom: '0.3em',
-    marginBottom: '1em',
+  const sectionTitleStyle: React.CSSProperties = { /* ... same as before ... */ 
+      fontFamily: 'var(--font-heading-ornate)', color: 'var(--ink-color-dark)',
+      fontSize: '2.5em', borderBottom: '1px solid var(--ink-color-light)',
+      paddingBottom: '0.3em', marginBottom: '1em',
   };
-
-  const characterListStyle: React.CSSProperties = {
-    listStyle: 'none',
-    padding: 0,
+  const listStyle: React.CSSProperties = { /* ... same as before ... */ 
+      listStyle: 'none', padding: 0,
   };
-
-  const characterItemStyle: React.CSSProperties = {
-    backgroundColor: 'var(--parchment-highlight)',
-    border: '1px solid var(--ink-color-light)',
-    borderRadius: '5px',
-    padding: '15px',
-    marginBottom: '10px',
-    boxShadow: '0px 3px 10px rgba(0,0,0,0.08)',
+  const listItemStyle: React.CSSProperties = { /* ... same as before ... */ 
+      backgroundColor: 'var(--parchment-highlight)', border: '1px solid var(--ink-color-light)',
+      borderRadius: '5px', padding: '15px', marginBottom: '10px',
+      boxShadow: '0px 3px 10px rgba(0,0,0,0.08)',
   };
-
 
   if (auth?.isLoading) {
     return <div style={pageStyle}><p>Loading dashboard...</p></div>;
   }
 
-  // If not authenticated (and not loading), ProtectedRoute should have redirected.
-  // But as a fallback or if directly landed here and token check failed:
   if (!auth?.isAuthenticated) {
       return (
           <div style={{...pageStyle, textAlign: 'center'}}>
@@ -97,41 +106,93 @@ const DashboardPage: React.FC = () => {
         Welcome, {auth?.user?.username || 'Scribe'}!
       </h1>
 
+      {/* Characters Section */}
       <div style={{ marginBottom: '30px' }}>
         <h2 style={{...sectionTitleStyle, fontSize: '2em' }}>Your Characters</h2>
-        {isLoading && <p>Loading characters...</p>}
-        {error && <p style={{ color: 'red' }}>Error: {error}</p>}
-        {!isLoading && !error && characters.length === 0 && (
-          <p>You have not yet chronicled any adventurers. Why not create one?</p>
+        {isLoadingChars && <p>Loading characters...</p>}
+        {charError && <p style={{ color: 'red' }}>Error: {charError}</p>}
+        {!isLoadingChars && !charError && characters.length === 0 && (
+          <p>You have not yet chronicled any adventurers.</p>
         )}
-        {!isLoading && !error && characters.length > 0 && (
-          <ul style={characterListStyle}>
+        {!isLoadingChars && !charError && characters.length > 0 && (
+          <ul style={listStyle}>
             {characters.map((char) => (
-              <li key={char.id} style={characterItemStyle}>
+              <li key={char.id} style={listItemStyle}>
                 <h3 style={{fontFamily: 'var(--font-heading-ornate)', fontSize: '1.8em', margin: '0 0 10px 0'}}>
-                  {/* Later, this Link will go to /characters/{char.id} */}
                   <Link to={`/characters/${char.id}`} style={{color: 'var(--ink-color-dark)', textDecoration: 'none'}}>
                     {char.name}
                   </Link>
                 </h3>
                 <p style={{margin: '5px 0'}}>Level {char.level} {char.race} {char.character_class}</p>
-                {/* Add more details or a "View Sheet" button later */}
               </li>
             ))}
           </ul>
         )}
         <div style={{marginTop: '20px'}}>
-            {/* Use your actual ThemedButton import name */}
-            <Link to="/create-character"> {/* We'll need to create this route */}
+            <Link to="/create-character"> 
                 <ThemedButton variant="green" runeSymbol="+">Create New Character</ThemedButton>
             </Link>
         </div>
       </div>
 
-      {/* Placeholder for Campaigns Section */}
+      {/* Campaigns You DM Section */}
       <div style={{ marginBottom: '30px' }}>
-        <h2 style={{...sectionTitleStyle, fontSize: '2em' }}>Your Campaigns</h2>
-        <p>(Campaigns will be listed here soon!)</p>
+        <h2 style={{...sectionTitleStyle, fontSize: '2em' }}>Campaigns You DM</h2>
+        {isLoadingDmCampaigns && <p>Loading your campaigns...</p>}
+        {dmCampaignError && <p style={{ color: 'red' }}>Error: {dmCampaignError}</p>}
+        {!isLoadingDmCampaigns && !dmCampaignError && dmCampaigns.length === 0 && (
+          <p>You are not currently running any campaigns.</p>
+        )}
+        {!isLoadingDmCampaigns && !dmCampaignError && dmCampaigns.length > 0 && (
+          <ul style={listStyle}>
+            {dmCampaigns.map((camp) => (
+              <li key={camp.id} style={listItemStyle}>
+                <h3 style={{fontFamily: 'var(--font-heading-ornate)', fontSize: '1.8em', margin: '0 0 10px 0'}}>
+                  <Link to={`/campaigns/${camp.id}/manage`} style={{color: 'var(--ink-color-dark)', textDecoration: 'none'}}>
+                    {camp.title}
+                  </Link>
+                </h3>
+                <p style={{margin: '5px 0'}}>Status: {camp.is_open_for_recruitment ? "Open for Recruitment" : "Closed"}</p>
+                <p style={{margin: '5px 0'}}>{camp.members?.length || 0} member(s)</p>
+              </li>
+            ))}
+          </ul>
+        )}
+         <div style={{marginTop: '20px'}}>
+            <Link to="/create-campaign"> {/* We'll need to create this route & page */}
+                <ThemedButton variant="red" runeSymbol="📜">Forge New Campaign</ThemedButton>
+            </Link>
+        </div>
+      </div>
+
+      {/* Campaigns You're In Section */}
+      <div style={{ marginBottom: '30px' }}>
+        <h2 style={{...sectionTitleStyle, fontSize: '2em' }}>Campaigns You're In</h2>
+        {isLoadingPlayerCampaigns && <p>Loading your active campaigns...</p>}
+        {playerCampaignError && <p style={{ color: 'red' }}>Error: {playerCampaignError}</p>}
+        {!isLoadingPlayerCampaigns && !playerCampaignError && playerCampaigns.length === 0 && (
+          <p>You have not yet joined any campaigns as a player.</p>
+        )}
+        {!isLoadingPlayerCampaigns && !playerCampaignError && playerCampaigns.length > 0 && (
+          <ul style={listStyle}>
+            {playerCampaigns.map((camp) => (
+              <li key={camp.id} style={listItemStyle}>
+                <h3 style={{fontFamily: 'var(--font-heading-ornate)', fontSize: '1.8em', margin: '0 0 10px 0'}}>
+                   <Link to={`/campaigns/${camp.id}/play`} style={{color: 'var(--ink-color-dark)', textDecoration: 'none'}}>
+                    {camp.title}
+                  </Link>
+                </h3>
+                <p style={{margin: '5px 0'}}>DM: {camp.dm?.username || 'Unknown'}</p>
+                {/* Add link to view campaign details/play area */}
+              </li>
+            ))}
+          </ul>
+        )}
+        <div style={{marginTop: '20px'}}>
+            <Link to="/discover-campaigns"> {/* We'll need to create this route & page */}
+                <ThemedButton variant="green" runeSymbol="🗺️">Discover Campaigns</ThemedButton>
+            </Link>
+        </div>
       </div>
 
     </div>
@@ -139,3 +200,4 @@ const DashboardPage: React.FC = () => {
 };
 
 export default DashboardPage;
+

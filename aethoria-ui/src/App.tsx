@@ -4,7 +4,8 @@ import { BrowserRouter as Router, Routes, Route, Link, Outlet, useLocation, NavL
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import LandingPage from './pages/LandingPage';
-import ProtectedRoute from './components/auth/ProtectedRoute'; // <--- IMPORT ProtectedRoute
+import ProtectedRoute from './components/auth/ProtectedRoute';
+import CreateCharacterPage from './pages/CreateCharacterPage'; // <--- IMPORT ProtectedRoute
 import './App.css'; 
 
 const AuthenticatedLayout: React.FC = () => {
@@ -103,12 +104,12 @@ function App() {
         {/* <Route path="/register" element={<RegisterPage />} /> */}
 
         {/* Protected Routes Group */}
-        <Route element={<ProtectedRoute />}> {/* Wrap authenticated routes with ProtectedRoute */}
-          <Route element={<AuthenticatedLayout />}> {/* AuthenticatedLayout is now a child of ProtectedRoute */}
+        <Route element={<ProtectedRoute />}> 
+          <Route element={<AuthenticatedLayout />}> 
             <Route path="/dashboard" element={<DashboardPage />} /> 
-            {/* Add other authenticated routes here as children, e.g.: */}
+            <Route path="/create-character" element={<CreateCharacterPage />} /> {/* <--- ADD THIS NEW ROUTE */}
+            {/* Example of other authenticated routes: */}
             {/* <Route path="/characters" element={<CharacterListPage />} /> */}
-            {/* <Route path="/campaigns" element={<CampaignListPage />} /> */}
           </Route>
         </Route>
 
