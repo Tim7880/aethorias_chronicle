@@ -22,7 +22,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 
-  background-color: #FBF0D9; /* Our base creamy parchment color */
+  background-color: #3f1d17; /* Our base creamy parchment color */
   /* For a texture, you'd download/create a seamless parchment texture image, 
     place it in public/ or src/assets/, and use:
     background-image: url('/parchment_texture_tile.png'); 
@@ -35,9 +35,9 @@ body {
   /* This is a very simple way to hint at a central "pool of light" for the whole page.
      More advanced effects would use pseudo-elements or specific container styling. */
   background-image: radial-gradient(circle at center top, 
-      rgba(255, 245, 220, 0.7) 0%,  /* Brighter, slightly more yellow center top */
-      rgba(251, 240, 217, 0.4) 40%, /* Mid-tone parchment */
-      rgba(245, 230, 200, 0.1) 75%,  /* Fading to base parchment */
+      rgba(219, 221, 196, 0.849) 0%,  /* Brighter, slightly more yellow center top */
+      rgb(102, 89, 61) 40%, /* Mid-tone parchment */
+      rgba(112, 87, 37, 0.767) 75%,  /* Fading to base parchment */
       #FBF0D9 100% /* Ensuring the base color is hit */
   );
   min-height: 100vh; /* Ensure background covers full viewport height */

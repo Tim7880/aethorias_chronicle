@@ -43,6 +43,14 @@ export interface Character {
 
   level_up_status: string | null;
 
+   // --- ADDED/ENSURED CURRENCY FIELDS ARE PRESENT ---
+  currency_pp: number;
+  currency_gp: number;
+  currency_ep: number;
+  currency_sp: number;
+  currency_cp: number;
+  // --- END CURRENCY FIELDS ---
+
   created_at: string; 
   updated_at: string; 
 

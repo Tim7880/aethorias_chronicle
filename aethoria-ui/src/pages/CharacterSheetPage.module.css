@@ -290,3 +290,66 @@
     margin-top: 1em; 
     border: 1px solid green;
 }
+
+.inventoryHeader {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--font-script-annotation); /* Or your preferred header font */
+    font-weight: bold;
+    color: var(--ink-color-medium);
+    padding: 8px 0;
+    border-bottom: 1px solid var(--ink-color-dark); /* A more solid header underline */
+    margin-bottom: 8px;
+    font-size: 1.1em;
+}
+
+.inventoryHeaderName {
+    flex-grow: 1;
+    text-align: left;
+}
+
+.inventoryHeaderQuantity {
+    min-width: 70px; /* Match or be slightly wider than item quantity below */
+    text-align: right;
+    padding-right: 5px; /* Align with numbers */
+}
+/* Styles for Inventory and Currency */
+.inventoryItemName {
+    text-align: left; /* Allows name to take up available space */
+    margin-right: 10px; /* Space before quantity */
+}
+
+.inventoryItemQuantity {
+    min-width: 60px; /* Give quantity a bit of fixed space */
+    text-align: right;
+    font-family: var(--font-body-primary);
+    color: var(--ink-color-medium);
+}
+
+.inventoryItemEquippedMarker {
+    font-size: 0.8em;
+    color: var(--ink-color-medium);
+    margin-left: 5px;
+    font-style: italic;
+}
+
+.currencyDisplay {
+    margin-top: 20px; /* Space above currency if it's a separate block */
+    padding-top: 15px;
+    border-top: 1px dashed var(--ink-color-light);
+    display: flex;
+    flex-wrap: wrap; /* Allow currency to wrap on smaller screens */
+    justify-content: space-around; /* Distribute currency items */
+    gap: 10px; /* Gap between currency items */
+}
+
+.currencyItem {
+    font-family: var(--font-body-primary);
+    font-size: 1em;
+    color: var(--ink-color-dark);
+    background-color: rgba(0,0,0,0.03);
+    padding: 5px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--ink-color-light);
+}
+

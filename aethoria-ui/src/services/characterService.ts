@@ -25,6 +25,7 @@ export interface CharacterCreatePayload {
   armor_class?: number | null;
   chosen_cantrip_ids?: number[] | null;
   chosen_initial_spell_ids?: number[] | null;
+  chosen_skill_proficiencies?: number[] | null;
 }
 
 export const characterService = {

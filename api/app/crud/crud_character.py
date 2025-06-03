@@ -62,6 +62,21 @@ CLASS_ASI_LEVELS_MAP: Dict[str, List[int]] = {
 ROGUE_EXPERTISE_LEVELS = [1, 6]
 ROGUE_ARCHETYPE_LEVEL = 3
 
+DEFAULT_STARTING_GP = 15
+# Item Name (must match name in PREDEFINED_ITEMS), Quantity
+DEFAULT_STARTING_EQUIPMENT_PACK: List[Tuple[str, int]] = [
+    ("Backpack", 1),
+    ("Bedroll", 1),
+    ("Mess Kit", 1),
+    ("Tinderbox", 1),
+    ("Torch", 10),
+    ("Rations (1 day)", 3),
+    ("Waterskin", 1),
+    ("Rope, Hempen (50 feet)", 1),
+    ("Dagger", 1) 
+    # Maybe a healing potion later, or class-specific items
+]
+
 async def _get_next_level_up_status(character: CharacterModel, db: AsyncSession) -> Optional[str]:
     """Helper function to determine the next pending level-up status."""
     char_class_lower = character.character_class.lower() if character.character_class else None
@@ -160,39 +175,40 @@ async def _sorcerer_gains_cantrip_or_spell_at_level(level: int, db: AsyncSession
 async def create_character_for_user(
     db: AsyncSession, character_in: CharacterCreateSchema, user_id: int
 ) -> CharacterModel:
-    character_data = character_in.model_dump(exclude={"chosen_cantrip_ids", "chosen_initial_spell_ids"}) 
-    
+    # Exclude fields that are handled separately or have defaults set by logic
+    character_data = character_in.model_dump(
+        exclude={
+            "chosen_cantrip_ids", 
+            "chosen_initial_spell_ids", 
+            "chosen_skill_proficiencies", # <--- Add to exclude
+            "currency_pp", "currency_gp", "currency_ep", "currency_sp", "currency_cp"
+        }
+    ) 
+
     char_class_lower = None
     if character_data.get("character_class"):
         char_class_lower = character_data["character_class"].lower()
-    
+
     hit_die_type_value = CLASS_HIT_DIE_MAP.get(char_class_lower)
     character_data["hit_die_type"] = hit_die_type_value
-    
+
     if character_data.get("experience_points") is not None:
         character_data["level"] = get_level_for_xp(character_data["experience_points"], character_data.get("is_ascended_tier", False))
     elif character_data.get("level") is None:
          character_data["level"] = 1
-    
+
     initial_level = character_data["level"]
     character_data["hit_dice_total"] = initial_level
     character_data["hit_dice_remaining"] = initial_level
     character_data["death_save_successes"] = character_data.get("death_save_successes", 0)
     character_data["death_save_failures"] = character_data.get("death_save_failures", 0)
-    
-    # Set initial level_up_status based on L1 features
-    # Set initial level_up_status based on L1 features
-    if initial_level == 1 and is_rogue_expertise_due(char_class_lower, initial_level) and \
-       not character_data.get("roguish_archetype"): # Rogues choose L1 expertise
+
+    if initial_level == 1 and is_rogue_expertise_due(char_class_lower, initial_level):
         character_data["level_up_status"] = "pending_expertise"
-    # Add other L1 specific choices here if any (e.g. Fighter fighting style)
-    # elif initial_level == 1 and is_fighter_fighting_style_due(char_class_lower, initial_level):
-    #     character_data["level_up_status"] = "pending_fighting_style"
     else:
-        character_data["level_up_status"] = None # Default if no immediate L1 choices
-    # --- END MODIFICATION ---
-    # Initial HP calculation
-    if character_data.get("hit_points_max") is None: # Only calculate if not provided
+        character_data["level_up_status"] = None
+
+    if character_data.get("hit_points_max") is None:
         if hit_die_type_value and character_data.get("constitution") is not None:
             con_modifier = calculate_ability_modifier(character_data["constitution"])
             calculated_hp = 0
@@ -203,13 +219,19 @@ async def create_character_for_user(
                 for _ in range(2, initial_level + 1): 
                     calculated_hp += max(1, (hit_die_type_value // 2) + 1 + con_modifier)
             character_data["hit_points_max"] = calculated_hp
-    
+
     if character_data.get("hit_points_max") is not None and character_data.get("hit_points_current") is None:
         character_data["hit_points_current"] = character_data["hit_points_max"]
-            
+
+    character_data["currency_gp"] = DEFAULT_STARTING_GP
+    character_data["currency_pp"] = 0
+    character_data["currency_ep"] = 0
+    character_data["currency_sp"] = 0
+    character_data["currency_cp"] = 0
+
     db_character = CharacterModel(**character_data, user_id=user_id)
     db.add(db_character)
-    
+
     try:
         await db.commit()
         await db.refresh(db_character)
@@ -217,21 +239,62 @@ async def create_character_for_user(
         await db.rollback()
         raise ValueError(f"Error creating character base record: {e}")
 
-    # Process initial cantrips and spells (Sorcerer L1 example)
+    # --- ADD STARTING EQUIPMENT (Your existing logic for this) ---
+    for item_name, quantity in DEFAULT_STARTING_EQUIPMENT_PACK:
+        item_model_res = await db.execute(select(ItemModel).filter(ItemModel.name == item_name))
+        item_model = item_model_res.scalars().first()
+        if item_model:
+            item_create_schema = CharacterItemCreateSchema(
+                item_id=item_model.id, quantity=quantity, is_equipped=False
+            )
+            try:
+                await add_item_to_character_inventory(db=db, character_id=db_character.id, item_in=item_create_schema)
+                print(f"Added starting item '{item_name}' to character {db_character.name}")
+            except Exception as e:
+                print(f"Warning: Could not add starting item '{item_name}' to character {db_character.id}: {e}")
+        else:
+            print(f"Warning: Starting item definition '{item_name}' not found in database. Skipping.")
+    # --- END STARTING EQUIPMENT ---
+
+    # --- PROCESS CHOSEN SKILL PROFICIENCIES ---
+    if character_in.chosen_skill_proficiencies:
+        # You would define how many skills a new character gets.
+        # For now, let's assume the frontend sends a valid number (e.g., 2-4).
+        # A more robust validation would check against class/background rules.
+        print(f"Processing chosen skill proficiencies for {db_character.name}: {character_in.chosen_skill_proficiencies}")
+        for skill_id in set(character_in.chosen_skill_proficiencies): # Use set to avoid duplicates
+            skill_def = await db.get(SkillModel, skill_id)
+            if not skill_def:
+                print(f"Warning: Chosen skill ID {skill_id} not found. Skipping proficiency.")
+                continue
+            try:
+                # Use your existing function to assign proficiency
+                await assign_or_update_skill_proficiency_to_character(
+                    db=db, 
+                    character_id=db_character.id, 
+                    skill_id=skill_id, 
+                    is_proficient=True
+                )
+                print(f"Assigned proficiency in '{skill_def.name}' to character {db_character.name}")
+            except Exception as e:
+                print(f"Warning: Could not assign proficiency for skill ID {skill_id} to character {db_character.id}: {e}")
+    # --- END PROCESS CHOSEN SKILL PROFICIENCIES ---
+
+    # Process initial cantrips and spells for L1 Sorcerer (Your existing logic)
     if char_class_lower == "sorcerer" and db_character.level == 1:
         expected_cantrips, expected_spells_lvl1 = SORCERER_SPELLS_KNOWN_TABLE.get(1, (0,0))
+        from app.schemas.character_spell import CharacterSpellCreate as CSC_Schema
+
         if character_in.chosen_cantrip_ids:
             if len(set(character_in.chosen_cantrip_ids)) != expected_cantrips:
-                # Consider deleting the already committed character if this part fails, for true atomicity
-                # For now, raising ValueError. The character exists but without these spells.
                 raise ValueError(f"Sorcerers at L1 must choose {expected_cantrips} unique cantrips.")
             for spell_id in set(character_in.chosen_cantrip_ids):
                 spell_def = await db.get(SpellModel, spell_id)
                 if not spell_def or spell_def.level != 0: raise ValueError(f"Invalid cantrip ID {spell_id}.")
                 if not (spell_def.dnd_classes and "sorcerer" in [c.lower() for c in spell_def.dnd_classes]): raise ValueError(f"Spell ID {spell_id} not a Sorcerer cantrip.")
-                db.add(CharacterSpellModel(character_id=db_character.id, spell_id=spell_id, is_known=True, is_prepared=True))
+                await add_spell_to_character(db, character_id=db_character.id, spell_association_in=CSC_Schema(spell_id=spell_id, is_known=True, is_prepared=True))
         elif expected_cantrips > 0: raise ValueError(f"Sorcerers at L1 must select {expected_cantrips} cantrips.")
-        
+
         if character_in.chosen_initial_spell_ids:
             if len(set(character_in.chosen_initial_spell_ids)) != expected_spells_lvl1:
                 raise ValueError(f"Sorcerers at L1 must choose {expected_spells_lvl1} unique L1 spells.")
@@ -240,14 +303,21 @@ async def create_character_for_user(
                 if not spell_def or spell_def.level != 1: raise ValueError(f"Invalid L1 spell ID {spell_id}.")
                 if not (spell_def.dnd_classes and "sorcerer" in [c.lower() for c in spell_def.dnd_classes]): raise ValueError(f"Spell ID {spell_id} not a Sorcerer spell.")
                 if spell_id in (character_in.chosen_cantrip_ids or []): raise ValueError(f"Spell ID {spell_id} chosen as cantrip and L1 spell.")
-                db.add(CharacterSpellModel(character_id=db_character.id, spell_id=spell_id, is_known=True, is_prepared=True))
+                await add_spell_to_character(db, character_id=db_character.id, spell_association_in=CSC_Schema(spell_id=spell_id, is_known=True, is_prepared=True))
         elif expected_spells_lvl1 > 0: raise ValueError(f"Sorcerers at L1 must select {expected_spells_lvl1} L1 spells.")
-            
-        if character_in.chosen_cantrip_ids or character_in.chosen_initial_spell_ids:
-            try: await db.commit() # Commit spell associations
-            except Exception as e: await db.rollback(); raise ValueError(f"Error adding initial spells: {e}")
-    
-    return await get_character(db, db_character.id) # Ensures all relationships are loaded
+
+    # Final commit might not be strictly necessary if add_item_to_character_inventory and 
+    # assign_or_update_skill_proficiency_to_character handle their own commits,
+    # but it ensures any direct changes to db_character (like currency if it wasn't part of initial character_data) are saved.
+    # Your current code sets currency in character_data before the first commit, which is good.
+    # The add_item_to_character_inventory and add_spell_to_character you have likely commit.
+    # assign_or_update_skill_proficiency_to_character also seems to commit based on your last file.
+    # So, an explicit final commit here might be redundant if all sub-functions commit.
+    # However, a final refresh is good before returning.
+
+    await db.refresh(db_character) # Refresh to get the latest state including all associations
+
+    return await get_character(db, db_character.id) # Re-fetch fully for consistent response structure
 
 
 async def get_character(db: AsyncSession, character_id: int) -> Optional[CharacterModel]:

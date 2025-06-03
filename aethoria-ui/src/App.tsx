@@ -33,9 +33,9 @@ const AuthenticatedLayout: React.FC = () => {
     <div>
       <nav style={{ 
           padding: '10px 20px', 
-          backgroundColor: 'rgba(58, 41, 28, 0.08)', 
+          backgroundColor: 'rgb(224, 204, 165)', 
           marginBottom: '20px', 
-          borderBottom: '1px solid rgba(58, 41, 28, 0.2)' 
+          borderBottom: '1px solid rgba(192, 175, 162, 0.92)' 
         }}>
         <ul style={{ listStyle: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 0, margin: 0 }}>
           <div style={{ display: 'flex', gap: '20px' }}>

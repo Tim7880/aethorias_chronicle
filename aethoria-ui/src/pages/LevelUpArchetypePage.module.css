@@ -1,0 +1,105 @@
+/* Path: src/pages/LevelUpArchetypePage.module.css */
+
+.pageStyle { 
+    padding: 20px; 
+    max-width: 700px; 
+    margin: 40px auto; 
+    text-align: center;
+    font-family: var(--font-body-primary); 
+}
+
+.container { /* Was containerStyle, now a class */
+    background-color: var(--parchment-highlight); 
+    padding: 30px 40px; 
+    border-radius: 8px; 
+    box-shadow: 0px 6px 18px rgba(0,0,0,0.15), 0px 0px 0px 1px var(--ink-color-light);
+    border: 1px solid rgba(120, 90, 70, 0.3);
+    text-align: left; /* Default text align for content within the box */
+}
+
+.title { /* Was titleStyle */
+    font-family: var(--font-heading-ornate); 
+    color: var(--ink-color-dark); 
+    font-size: 2.5em; 
+    margin-bottom: 1em;
+    text-align: center; /* Center title within the container */
+    border-bottom: 1px solid var(--ink-color-light);
+    padding-bottom: 0.4em;
+}
+
+.infoText { /* Was infoStyle */
+    font-family: var(--font-body-primary); 
+    margin-bottom: 1.5em; 
+    line-height: 1.6;
+    text-align: center; /* Center info text if it's introductory */
+}
+.infoTextLeft { /* For more detailed info that should be left-aligned */
+    font-family: var(--font-body-primary); 
+    margin-bottom: 1.5em; 
+    line-height: 1.6;
+    text-align: left;
+}
+
+
+.errorText { 
+    color: var(--ink-color-dark); 
+    background-color: rgba(255,0,0,0.1); 
+    padding: 10px; 
+    border-radius: 4px; 
+    margin-top: 1.5em; 
+    border: 1px solid red;
+    text-align: center;
+}
+
+.successText { 
+    color: var(--ink-color-dark); 
+    background-color: rgba(0,128,0,0.1); 
+    padding: 10px; 
+    border-radius: 4px; 
+    margin-top: 1.5em; 
+    border: 1px solid green;
+    text-align: center;
+}
+
+.selectGroup { /* Was selectGroupStyle */
+    margin: 20px 0; 
+    text-align: left; /* Keep label and select aligned left */
+}
+
+.selectLabel { /* Was selectLabelStyle */
+    display: block; 
+    font-family: var(--font-script-annotation); 
+    font-size: 1.3em; 
+    color: var(--ink-color-medium); 
+    margin-bottom: 0.5em;
+}
+
+.selectElement { /* Was selectElementStyle */
+    font-family: var(--font-body-primary); 
+    font-size: 1.2em; 
+    color: var(--ink-color-dark); 
+    background-color: rgba(245, 235, 215, 0.6); 
+    border: 1px solid rgba(180, 160, 140, 0.7); 
+    padding: 10px; 
+    border-radius: 4px; 
+    box-shadow: inset 1px 1px 3px rgba(0,0,0,0.1); 
+    width: 100%; 
+    box-sizing: border-box; 
+    cursor: pointer; 
+    margin-bottom: 1em; /* Add some space below the select */
+}
+
+.archetypeDescription { /* Was archetypeDescStyle */
+    font-size: 0.9em; 
+    color: var(--ink-color-medium); 
+    margin-top: 0.1em; 
+    padding-left: 5px; 
+    min-height: 2.5em; /* Ensure space for description */
+    font-family: var(--font-body-primary);
+    font-style: italic;
+}
+
+.buttonContainer {
+    margin-top: 2em;
+    text-align: center;
+}

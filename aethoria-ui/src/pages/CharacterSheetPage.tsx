@@ -214,20 +214,34 @@ const CharacterSheetPage: React.FC = () => {
                   ) : <p>No spells known.</p>}
               </div>
 
-              <div className={styles.box}>
-                  <h2 className={styles.sectionTitle}>Inventory</h2>
+               <div className={styles.box}> {/* Inventory and Currency Box */}
+                  <h2 className={styles.sectionTitle}>Inventory & Wealth</h2>
+                  <div className={styles.inventoryHeader}>
+                      <span className={styles.inventoryHeaderName}>Item</span>
+                      <span className={styles.inventoryHeaderQuantity}>Qty</span>
+                  </div>
                   {character.inventory_items && character.inventory_items.length > 0 ? (
                       <ul className={styles.statList}>
                       {character.inventory_items.map(invItem => (
                           <li key={invItem.id} className={styles.statItem}>
-                          <span title={invItem.item_definition.description || invItem.item_definition.name}>
-                              {invItem.item_definition.name} (x{invItem.quantity})
-                          </span>
-                          <span style={{fontSize: '0.9em', color: 'var(--ink-color-medium)'}}>{invItem.is_equipped ? "[Equipped]" : ""}</span>
+                            <span className={styles.inventoryItemName} title={invItem.item_definition.description || invItem.item_definition.name}>
+                                {invItem.item_definition.name} {invItem.is_equipped ? "[E]" : ""}
+                            </span>
+                            <span className={styles.inventoryItemQuantity}>{invItem.quantity}</span>
                           </li>
                       ))}
                       </ul>
                   ) : <p>Inventory is empty.</p>}
+                  
+                  {/* --- NEW: Currency Display --- */}
+                  <div className={styles.currencyDisplay}>
+                    <span className={styles.currencyItem}>PP: {character.currency_pp ?? 0}</span>
+                    <span className={styles.currencyItem}>GP: {character.currency_gp ?? 0}</span>
+                    <span className={styles.currencyItem}>EP: {character.currency_ep ?? 0}</span>
+                    <span className={styles.currencyItem}>SP: {character.currency_sp ?? 0}</span>
+                    <span className={styles.currencyItem}>CP: {character.currency_cp ?? 0}</span>
+                  </div>
+                  {/* --- END NEW: Currency Display --- */}
               </div>
           </div>
           
@@ -251,3 +265,4 @@ const CharacterSheetPage: React.FC = () => {
 };
 
 export default CharacterSheetPage;
+
