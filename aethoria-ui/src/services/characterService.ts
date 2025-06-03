@@ -1,6 +1,6 @@
 // Path: src/services/characterService.ts
 import type { Character, CharacterHPLevelUpResponse, ASISelectionRequest } from '../types/character'; 
-import type { ExpertiseSelectionRequest, RogueArchetypeSelectionRequest } from '../types/character'; // Assuming ExpertiseSelectionRequest is in schemas/character.ts
+import type { ExpertiseSelectionRequest, RogueArchetypeSelectionRequest } from '../types/character';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 
@@ -86,11 +86,10 @@ export const characterService = {
     return response.json() as Promise<Character>;
   },
 
-  // --- NEW FUNCTION for Rogue Expertise Selection ---
   selectRogueExpertise: async (
     token: string,
     characterId: number,
-    payload: ExpertiseSelectionRequest // This type needs to be imported/defined
+    payload: ExpertiseSelectionRequest
   ): Promise<Character> => {
     const response = await fetch(`${API_BASE_URL}/characters/${characterId}/level-up/select-expertise`, {
       method: 'POST',
@@ -113,7 +112,6 @@ export const characterService = {
     }
     return response.json() as Promise<Character>;
   },
-  // --- END NEW FUNCTION ---
 
   selectRogueArchetype: async (
     token: string,
@@ -142,7 +140,6 @@ export const characterService = {
     return response.json() as Promise<Character>;
   },
 
-  // --- NEW FUNCTION for ASI Selection ---
   selectASI: async (
     token: string,
     characterId: number,
@@ -168,6 +165,32 @@ export const characterService = {
       throw new Error(errorDetail);
     }
     return response.json() as Promise<Character>;
+  },
+  
+  deleteCharacter: async (token: string, characterId: number): Promise<void> => {
+    // --- CORRECTED URL CONSTRUCTION ---
+    const response = await fetch(`${API_BASE_URL}/characters/${characterId}`, {
+    // --- END CORRECTION ---
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) throw new Error('Unauthorized: Session may have expired.');
+      if (response.status === 404) throw new Error('Character not found or not authorized to delete.');
+      
+      let errorDetail = `Failed to delete character (status: ${response.status})`;
+      try {
+        const errorData = await response.json();
+        if (errorData && errorData.detail) {
+          errorDetail = Array.isArray(errorData.detail) ? errorData.detail.map((err: any) => err.msg).join(', ') : errorData.detail;
+        }
+      } catch (e) { /* Ignore if error response is not JSON */ }
+      throw new Error(errorDetail);
+    }
+    return; 
   }
-  // --- END NEW FUNCTION ---
 };
+

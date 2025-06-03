@@ -58,6 +58,15 @@ class Character(Base):
     currency_sp = Column(Integer, default=0, nullable=False, server_default=sa.text('0')) # Silver Pieces
     currency_cp = Column(Integer, default=0, nullable=False, server_default=sa.text('0')) # Copper Pieces
     # --- END EXPANDED CURRENCY FIELDS ---
+    
+     # --- NEW SAVING THROW PROFICIENCY FIELDS ---
+    st_prof_strength = Column(Boolean, default=False, nullable=False, server_default=sa.text('false'))
+    st_prof_dexterity = Column(Boolean, default=False, nullable=False, server_default=sa.text('false'))
+    st_prof_constitution = Column(Boolean, default=False, nullable=False, server_default=sa.text('false'))
+    st_prof_intelligence = Column(Boolean, default=False, nullable=False, server_default=sa.text('false'))
+    st_prof_wisdom = Column(Boolean, default=False, nullable=False, server_default=sa.text('false'))
+    st_prof_charisma = Column(Boolean, default=False, nullable=False, server_default=sa.text('false'))
+    # --- END NEW FIELDS ---
 
     inventory_items = relationship("CharacterItem", back_populates="character_owner", cascade="all, delete-orphan")
     skills = relationship("CharacterSkill", back_populates="character_owner", cascade="all, delete-orphan")
