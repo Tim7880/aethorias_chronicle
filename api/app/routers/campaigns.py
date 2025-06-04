@@ -62,7 +62,7 @@ async def read_discoverable_campaigns(
     campaigns = await crud_campaign.get_discoverable_campaigns(db=db, skip=skip, limit=limit)
     return campaigns
 
-@router.get("/{campaign_id}", response_model=CampaignSchema)
+@router.get("/{campaign_id}/", response_model=CampaignSchema)
 async def read_single_campaign(
     campaign_id: int,
     db: AsyncSession = Depends(get_db),

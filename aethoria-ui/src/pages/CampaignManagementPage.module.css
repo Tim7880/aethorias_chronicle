@@ -106,7 +106,7 @@
     border: 1px dashed var(--ink-color-light);
     border-radius: 6px;
     padding: 20px;
-    background-color: rgba(206, 189, 166, 0.877); 
+    background-color: rgb(228, 206, 175); 
     margin-bottom: 25px; 
 }
 .box:last-child {

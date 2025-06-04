@@ -87,7 +87,7 @@ export const campaignService = {
   },
 
   getCampaignJoinRequests: async (token: string, campaignId: number): Promise<CampaignMember[]> => {
-    const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/join-requests/`, {
+    const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/join-requests`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -105,7 +105,7 @@ export const campaignService = {
   },
 
   getCampaignById: async (token: string, campaignId: number): Promise<Campaign> => {
-    const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}`, {
+    const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/`, {
         method: 'GET',
         headers: { 'Authorization': `Bearer ${token}` },
     });
@@ -151,7 +151,35 @@ export const campaignService = {
         throw new Error(errorDetail);
     }
     return response.json() as Promise<CampaignMember>;
+  },
+  // --- NEW FUNCTION to get active campaign members ---
+  getActiveCampaignMembers: async (token: string, campaignId: number): Promise<CampaignMember[]> => {
+    const url = new URL(`${API_BASE_URL}/campaigns/${campaignId}/members`); // Assuming trailing slash for consistency
+    url.searchParams.append('status', 'active'); // Filter by ACTIVE status
+
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Unauthorized: Session may have expired.');
+      }
+      if (response.status === 403) {
+        throw new Error('Forbidden: You are not authorized to view members of this campaign.');
+      }
+      if (response.status === 404) {
+        throw new Error('Campaign not found.');
+      }
+      throw new Error(`Failed to fetch active campaign members (status: ${response.status})`);
+    }
+    return response.json() as Promise<CampaignMember[]>;
   }
+  // --- END NEW FUNCTION ---
 };
 
 
