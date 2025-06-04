@@ -133,3 +133,78 @@
     text-align: right; 
 }
 
+.modalOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6); /* Dark overlay */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000; /* Ensure it's on top */
+}
+
+.modalContent {
+    background-color: var(--parchment-highlight);
+    padding: 30px 40px;
+    border-radius: 8px;
+    box-shadow: 0px 8px 25px rgba(0,0,0,0.25);
+    border: 2px solid var(--ink-color-medium);
+    width: 90%;
+    max-width: 500px;
+    text-align: left;
+    position: relative; /* For potential close button later */
+}
+
+.modalTitle {
+    font-family: var(--font-heading-ornate);
+    color: var(--ink-color-dark);
+    font-size: 2em;
+    margin-bottom: 0.8em;
+    text-align: center;
+    border-bottom: 1px solid var(--ink-color-light);
+    padding-bottom: 0.5em;
+}
+
+.modalInfo {
+    font-family: var(--font-body-primary);
+    color: var(--ink-color-medium);
+    margin-bottom: 1.5em;
+    line-height: 1.5;
+    font-size: 0.95em;
+}
+
+.modalSelectGroup {
+    margin-bottom: 20px;
+}
+
+.modalSelectLabel {
+    display: block;
+    font-family: var(--font-script-annotation);
+    font-size: 1.1em;
+    color: var(--ink-color-medium);
+    margin-bottom: 0.3em;
+}
+
+.modalSelectElement {
+    font-family: var(--font-body-primary);
+    font-size: 1.1em;
+    color: var(--ink-color-dark);
+    background-color: rgba(255, 255, 255, 0.8); /* Slightly more opaque for readability */
+    border: 1px solid var(--ink-color-light);
+    padding: 8px 12px;
+    border-radius: 4px;
+    box-shadow: inset 1px 1px 2px rgba(0,0,0,0.05);
+    width: 100%;
+    box-sizing: border-box;
+    cursor: pointer;
+}
+
+.modalActions {
+    margin-top: 25px;
+    display: flex;
+    justify-content: flex-end; /* Align buttons to the right */
+    gap: 15px;
+}
