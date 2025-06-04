@@ -12,6 +12,8 @@ import CharacterSheetPage from './pages/CharacterSheetPage';
 import LevelUpArchetypePage from './pages/LevelUpArchetypePage';
 import LevelUpASIPage from './pages/LevelUpASIPage';
 import DiscoverCampaignsPage from './pages/DiscoverCampaignsPage';
+import CampaignManagementPage from './pages/CampaignManagementPage';
+
 import './App.css'; 
 
 const AuthenticatedLayout: React.FC = () => {
@@ -129,6 +131,7 @@ function App() {
             <Route path="/character/:characterId/level-up/archetype" element={<LevelUpArchetypePage />} />
             <Route path="/characters/:characterIdFromRoute/view" element={<CharacterSheetPage />} />
             <Route path="/discover-campaigns" element={<DiscoverCampaignsPage />} />
+            <Route path="/campaigns/:campaignId/manage" element={<CampaignManagementPage />} />
           </Route>
         </Route>
 

@@ -145,21 +145,27 @@ async def player_request_to_join_campaign(
 @router.get("/{campaign_id}/join-requests", response_model=List[CampaignMemberSchema])
 async def dm_list_pending_join_requests(
     campaign_id: int,
+    skip: int = Query(0, ge=0), # Added skip for pagination
+    limit: int = Query(100, ge=1, le=100), # Added limit for pagination
     db: AsyncSession = Depends(get_db),
     current_user: UserModel = Depends(get_current_active_user)
 ):
-    campaign = await crud_campaign.get_campaign(db=db, campaign_id=campaign_id)
-    if not campaign:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
-    if campaign.dm_user_id != current_user.id:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only the DM can view join requests for this campaign."
+    # The CRUD function get_pending_join_requests_for_campaign now handles DM authorization
+    try:
+        pending_requests = await crud_campaign.get_pending_join_requests_for_campaign(
+            db=db, 
+            campaign_id=campaign_id, 
+            requesting_user_id=current_user.id, # Pass the current user's ID
+            skip=skip,
+            limit=limit
         )
-    pending_requests = await crud_campaign.get_pending_join_requests_for_campaign(
-        db=db, campaign_id=campaign_id
-    )
-    return pending_requests
+        return pending_requests
+    except HTTPException as e: # Re-raise HTTPExceptions from CRUD
+        raise e
+    except Exception as e: # Catch other potential errors
+        # Log the error for debugging
+        print(f"Error in dm_list_pending_join_requests: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not retrieve join requests.")
 
 @router.put("/{campaign_id}/join-requests/{user_id_of_requester}/approve", response_model=CampaignMemberSchema)
 async def dm_approve_join_request(

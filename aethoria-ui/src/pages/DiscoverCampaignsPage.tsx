@@ -1,21 +1,19 @@
 // Path: src/pages/DiscoverCampaignsPage.tsx
 import React, { useEffect, useState } from 'react';
-import { Link /*, useNavigate */ } from 'react-router-dom'; // useNavigate commented out
+import { Link /*, useNavigate */ } from 'react-router-dom'; // useNavigate commented out as not actively used
 import { useAuth } from '../contexts/AuthContext';
 import { campaignService } from '../services/campaignService';
-import type { Campaign } from '../types/campaign';
+import type { Campaign, PlayerCampaignJoinRequest } from '../types/campaign'; // Added PlayerCampaignJoinRequest
 import ThemedButton from '../components/common/ThemedButton';
-import styles from './DiscoverCampaignsPage.module.css'; // Using its own CSS module
-
-
+import styles from './DiscoverCampaignsPage.module.css'; 
 
 const DiscoverCampaignsPage: React.FC = () => {
   const auth = useAuth();
-  // const navigate = useNavigate(); // Commented out as not used
+  // const navigate = useNavigate(); // Not currently used in this component's logic
   const [discoverableCampaigns, setDiscoverableCampaigns] = useState<Campaign[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [requestStatus, setRequestStatus] = useState<Record<number, string>>({});
+  const [requestStatus, setRequestStatus] = useState<Record<number, string>>({}); // To store status per campaign_id
 
   useEffect(() => {
     const fetchCampaigns = async () => {
@@ -47,15 +45,31 @@ const DiscoverCampaignsPage: React.FC = () => {
       return;
     }
     setRequestStatus(prev => ({ ...prev, [campaignId]: "Requesting..." }));
+    
+    // --- CONSTRUCT PAYLOAD ---
+    // For now, player joins without selecting a specific character on this page.
+    // The backend PlayerCampaignJoinRequest schema expects an optional character_id.
+    const payload: PlayerCampaignJoinRequest = {
+      character_id: null 
+    };
+    // --- END PAYLOAD ---
+
     try {
-      await campaignService.requestToJoinCampaign(auth.token, campaignId);
+      // --- PASS PAYLOAD TO SERVICE ---
+      await campaignService.requestToJoinCampaign(auth.token, campaignId, payload);
+      // --- END PASS PAYLOAD ---
       setRequestStatus(prev => ({ ...prev, [campaignId]: "Requested!" }));
       alert("Your request to join has been sent!");
+      // Optionally, you could re-fetch discoverable campaigns or update UI
+      // e.g., by disabling the button permanently or changing its text to "Request Sent"
     } catch (err: any) {
       console.error(`Failed to request join for campaign ${campaignId}:`, err);
-      setRequestStatus(prev => ({ ...prev, [campaignId]: `Error: ${err.message || 'Failed'}` }));
+      setRequestStatus(prev => ({ ...prev, [campaignId]: `Error: ${err.message || 'Failed to send request'}` }));
     }
   };
+
+  // --- STYLING (using styles from DiscoverCampaignsPage.module.css) ---
+  // No inline styles needed here if all are in the CSS module
 
   if (isLoading && !discoverableCampaigns.length && !error) { 
     return <div className={styles.pageStyle}><p>Searching for open campaigns...</p></div>;
@@ -69,15 +83,14 @@ const DiscoverCampaignsPage: React.FC = () => {
     );
   }
   
-  if (error && !discoverableCampaigns.length) { // Only show main error if no campaigns loaded
+  // Show general error if no campaigns loaded due to it
+  if (error && !discoverableCampaigns.length) {
     return <div className={styles.pageStyle}><p className={styles.errorText}>{error}</p></div>;
   }
 
   return (
     <div className={styles.pageStyle}>
-      {/* Outer div for the wavy edge and textured background */}
       <div className={styles.sheetContainerWithWavyEffect}> 
-        {/* Inner div for the actual, non-distorted content */}
         <div className={styles.sheetContent}>
             <h1 className={styles.title}>Discover Open Campaigns</h1>
 
@@ -89,8 +102,8 @@ const DiscoverCampaignsPage: React.FC = () => {
             </p>
             )}
             
-            {/* Display general error if it occurred even if some campaigns might have loaded before (or if fetch fails) */}
-            {error && <p className={styles.errorText}>{error}</p>}
+            {/* Display general error if it occurred (even if some campaigns might have loaded before) */}
+            {error && discoverableCampaigns.length === 0 && <p className={styles.errorText}>{error}</p>}
 
 
             {discoverableCampaigns.length > 0 && (
@@ -119,7 +132,7 @@ const DiscoverCampaignsPage: React.FC = () => {
                     <ThemedButton
                         onClick={() => handleRequestToJoin(campaign.id)}
                         disabled={!!requestStatus[campaign.id] && (requestStatus[campaign.id] === "Requesting..." || requestStatus[campaign.id] === "Requested!")}
-                        variant={requestStatus[campaign.id] === "Requested!" ? undefined : "green"} // Corrected variant
+                        variant={requestStatus[campaign.id] === "Requested!" ? undefined : "green"}
                         runeSymbol={requestStatus[campaign.id] === "Requested!" ? "⏳" : "➕"}
                         tooltipText={
                             requestStatus[campaign.id] === "Requested!" ? "Request Sent (Pending Approval)" : 
@@ -141,5 +154,3 @@ const DiscoverCampaignsPage: React.FC = () => {
 };
 
 export default DiscoverCampaignsPage;
-
-
