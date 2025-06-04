@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload, aliased # aliased might be useful for complex queries later
 from typing import List, Optional
 
+from fastapi import HTTPException
 from app.models.campaign import Campaign as CampaignModel
 from app.models.campaign_member import CampaignMember as CampaignMemberModel, CampaignMemberStatusEnum
 from app.models.user import User as UserModel
@@ -222,14 +223,36 @@ async def create_join_request(
     await db.refresh(join_request)
     return await _get_fully_loaded_campaign_member(db, join_request.id)
 
-async def get_pending_join_requests_for_campaign( # MODIFIED FOR EAGER LOADING
-    db: AsyncSession, *, campaign_id: int, skip: int = 0, limit: int = 100
+async def get_pending_join_requests_for_campaign(
+    db: AsyncSession, *, campaign_id: int, requesting_user_id: int, skip: int = 0, limit: int = 100
 ) -> List[CampaignMemberModel]:
+    """
+    Retrieves pending join requests for a specific campaign,
+    ensuring the requesting user is the DM of the campaign.
+    Eagerly loads user and character details for each request.
+    """
+    # Step 1: Fetch the campaign to verify DM ownership
+    campaign_stmt = select(CampaignModel).filter(CampaignModel.id == campaign_id)
+    campaign_result = await db.execute(campaign_stmt)
+    campaign = campaign_result.scalars().first()
+
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+    
+    if campaign.dm_user_id != requesting_user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to view join requests for this campaign")
+
+    # Step 2: Fetch pending join requests with eager loading
+    # Your existing eager loading is good and comprehensive.
+    # The CharacterSchema in CampaignMemberSchema will determine what character details are serialized.
     result = await db.execute(
         select(CampaignMemberModel)
         .options(
-            selectinload(CampaignMemberModel.user),
-            selectinload(CampaignMemberModel.character).options(
+            selectinload(CampaignMemberModel.user), # Eager loads the requesting user details
+            selectinload(CampaignMemberModel.character).options( # Eager loads the character details
+                # Eager loading all sub-details of character.
+                # This is fine if your CharacterSchema used in CampaignMemberSchema is selective.
+                # If CharacterSchema is very large, you might optimize this later.
                 selectinload(CharacterModel.skills).selectinload(CharacterSkillModel.skill_definition),
                 selectinload(CharacterModel.inventory_items).selectinload(CharacterItemModel.item_definition),
                 selectinload(CharacterModel.known_spells).selectinload(CharacterSpellModel.spell_definition)
@@ -237,7 +260,7 @@ async def get_pending_join_requests_for_campaign( # MODIFIED FOR EAGER LOADING
         )
         .filter(CampaignMemberModel.campaign_id == campaign_id)
         .filter(CampaignMemberModel.status == CampaignMemberStatusEnum.PENDING_APPROVAL)
-        .order_by(CampaignMemberModel.joined_at.asc())
+        .order_by(CampaignMemberModel.joined_at.asc()) # Or request_sent_at if you rename 'joined_at'
         .offset(skip)
         .limit(limit)
     )

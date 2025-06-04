@@ -16,8 +16,8 @@ class CampaignMemberStatusEnum(enum.Enum):
     ACTIVE = "active"                     # Player is an active member
     REJECTED = "rejected"                 # Player's request was rejected
     INVITED = "invited"                   # DM invited player, awaiting player acceptance
-    # LEFT = "left"                       # Future: Player left the campaign
-    # KICKED = "kicked"                     # Future: DM removed player
+    LEFT = "left"                       #  Player left the campaign
+    KICKED = "kicked"                     #  DM removed player
 
 class CampaignMember(Base):
     __tablename__ = "campaign_members"

@@ -52,6 +52,15 @@ class CharacterBase(BaseModel):
     currency_sp: Optional[int] = Field(0, ge=0, description="Silver Pieces")
     currency_cp: Optional[int] = Field(0, ge=0, description="Copper Pieces")
     # --- END CURRENCY FIELDS ---
+    
+        # --- NEW SAVING THROW PROFICIENCY FIELDS ---
+    st_prof_strength: bool = Field(default=False, description="Proficiency in Strength saving throws")
+    st_prof_dexterity: bool = Field(default=False, description="Proficiency in Dexterity saving throws")
+    st_prof_constitution: bool = Field(default=False, description="Proficiency in Constitution saving throws")
+    st_prof_intelligence: bool = Field(default=False, description="Proficiency in Intelligence saving throws")
+    st_prof_wisdom: bool = Field(default=False, description="Proficiency in Wisdom saving throws")
+    st_prof_charisma: bool = Field(default=False, description="Proficiency in Charisma saving throws")
+    # --- END NEW SAVING THROW PROFICIENCY FIELDS ---
 
     @model_validator(mode='after')
     def check_stats_based_on_tier(cls, data):
@@ -135,6 +144,15 @@ class CharacterUpdate(BaseModel):
     currency_cp: Optional[int] = Field(None, ge=0)
     # --- END CURRENCY FIELDS ---
     
+    # --- ADDED SAVING THROW PROFICIENCIES for update ---
+    st_prof_strength: Optional[bool] = None
+    st_prof_dexterity: Optional[bool] = None
+    st_prof_constitution: Optional[bool] = None
+    st_prof_intelligence: Optional[bool] = None
+    st_prof_wisdom: Optional[bool] = None
+    st_prof_charisma: Optional[bool] = None
+    # --- END SAVING THROW PROFICIENCIES ---
+
     model_config = ConfigDict(extra='forbid')
 
     @model_validator(mode='after')

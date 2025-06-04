@@ -11,6 +11,7 @@ import LevelUpExpertisePage from './pages/LevelUpExpertisePage';
 import CharacterSheetPage from './pages/CharacterSheetPage';
 import LevelUpArchetypePage from './pages/LevelUpArchetypePage';
 import LevelUpASIPage from './pages/LevelUpASIPage';
+import DiscoverCampaignsPage from './pages/DiscoverCampaignsPage';
 import './App.css'; 
 
 const AuthenticatedLayout: React.FC = () => {
@@ -69,6 +70,14 @@ const AuthenticatedLayout: React.FC = () => {
                 </NavLink>
               </li>
             )}
+              <li>
+                <NavLink 
+                  to="/discover-campaigns" 
+                  style={({ isActive }) => ({ fontFamily: 'var(--font-body-primary)', color: isActive ? 'var(--ink-color-dark)' : 'var(--ink-color-medium)', textDecoration: 'none', fontWeight: isActive ? 'bold' : 'normal', cursor: isActive ? 'default' : 'pointer' })}
+                >
+                  Discover
+                </NavLink>
+              </li>
             {/* Add other primary authenticated links here */}
           </div>
           <div style={{ display: 'flex', gap: '20px' }}>
@@ -119,6 +128,7 @@ function App() {
             <Route path="/character/:characterId/level-up/expertise" element={<LevelUpExpertisePage />} /> {/* <--- NEW ROUTE */}
             <Route path="/character/:characterId/level-up/archetype" element={<LevelUpArchetypePage />} />
             <Route path="/characters/:characterIdFromRoute/view" element={<CharacterSheetPage />} />
+            <Route path="/discover-campaigns" element={<DiscoverCampaignsPage />} />
           </Route>
         </Route>
 

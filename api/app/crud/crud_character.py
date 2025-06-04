@@ -77,6 +77,26 @@ DEFAULT_STARTING_EQUIPMENT_PACK: List[Tuple[str, int]] = [
     # Maybe a healing potion later, or class-specific items
 ]
 
+# --- NEW: Class Saving Throw Proficiencies ---
+# Maps class name (lowercase) to a list of two ability score names (lowercase)
+CLASS_SAVING_THROW_PROFICIENCIES: Dict[str, List[str]] = {
+    "barbarian": ["strength", "constitution"],
+    "bard": ["dexterity", "charisma"],
+    "cleric": ["wisdom", "charisma"],
+    "druid": ["intelligence", "wisdom"],
+    "fighter": ["strength", "constitution"],
+    "monk": ["strength", "dexterity"],
+    "paladin": ["wisdom", "charisma"],
+    "ranger": ["strength", "dexterity"],
+    "rogue": ["dexterity", "intelligence"],
+    "sorcerer": ["constitution", "charisma"],
+    "warlock": ["wisdom", "charisma"],
+    "wizard": ["intelligence", "wisdom"],
+    # "artificer": ["constitution", "intelligence"] # If you add Artificer
+}
+# --- END NEW ---
+
+
 async def _get_next_level_up_status(character: CharacterModel, db: AsyncSession) -> Optional[str]:
     """Helper function to determine the next pending level-up status."""
     char_class_lower = character.character_class.lower() if character.character_class else None
@@ -181,7 +201,9 @@ async def create_character_for_user(
             "chosen_cantrip_ids", 
             "chosen_initial_spell_ids", 
             "chosen_skill_proficiencies", # <--- Add to exclude
-            "currency_pp", "currency_gp", "currency_ep", "currency_sp", "currency_cp"
+            "currency_pp", "currency_gp", "currency_ep", "currency_sp", "currency_cp",
+            "st_prof_strength", "st_prof_dexterity", "st_prof_constitution",
+            "st_prof_intelligence", "st_prof_wisdom", "st_prof_charisma"
         }
     ) 
 
@@ -228,6 +250,26 @@ async def create_character_for_user(
     character_data["currency_ep"] = 0
     character_data["currency_sp"] = 0
     character_data["currency_cp"] = 0
+
+    # --- START: Initialize Saving Throw Proficiencies ---
+    # Default all to False first
+    character_data["st_prof_strength"] = False
+    character_data["st_prof_dexterity"] = False
+    character_data["st_prof_constitution"] = False
+    character_data["st_prof_intelligence"] = False
+    character_data["st_prof_wisdom"] = False
+    character_data["st_prof_charisma"] = False
+
+    if char_class_lower and char_class_lower in CLASS_SAVING_THROW_PROFICIENCIES:
+        proficient_saves = CLASS_SAVING_THROW_PROFICIENCIES[char_class_lower]
+        for ability_score_name in proficient_saves:
+            field_name = f"st_prof_{ability_score_name}"
+            if hasattr(CharacterModel, field_name): # Check if the field exists on the model
+                 character_data[field_name] = True
+            else:
+                print(f"Warning: Model CharacterModel does not have attribute {field_name} for saving throw proficiency.")
+    # --- END: Initialize Saving Throw Proficiencies ---
+
 
     db_character = CharacterModel(**character_data, user_id=user_id)
     db.add(db_character)

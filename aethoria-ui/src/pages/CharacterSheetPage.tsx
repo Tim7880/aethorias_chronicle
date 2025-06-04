@@ -3,10 +3,10 @@ import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { characterService } from '../services/characterService';
-import type { Character } from '../types/character'; // Ensure this path is correct
-import styles from './CharacterSheetPage.module.css'; // Your CSS Module
+import type { Character } from '../types/character'; 
+import styles from './CharacterSheetPage.module.css';
 
-// Helper functions (keep these or move to a utils file)
+// Helper functions
 const calculateAbilityModifier = (score: number | null | undefined): number => {
     if (score === null || score === undefined) return 0;
     return Math.floor((score - 10) / 2);
@@ -16,11 +16,22 @@ const calculateAbilityModifierDisplay = (score: number | null | undefined): stri
     return modifier >= 0 ? `+${modifier}` : `${modifier}`;
 };
 const calculateProficiencyBonus = (level: number): number => {
-  if (level < 1) return 2; // Should ideally not happen for valid levels
+  if (level < 1) return 2;
   return Math.floor((level - 1) / 4) + 2;
 };
 
 type AbilityScoreKey = 'strength' | 'dexterity' | 'constitution' | 'intelligence' | 'wisdom' | 'charisma';
+
+// For mapping saving throws
+const SAVING_THROW_ABILITIES: Array<{ key: AbilityScoreKey; label: string; profField: keyof Pick<Character, "st_prof_strength" | "st_prof_dexterity" | "st_prof_constitution" | "st_prof_intelligence" | "st_prof_wisdom" | "st_prof_charisma"> }> = [
+    { key: 'strength', label: 'Strength', profField: 'st_prof_strength' },
+    { key: 'dexterity', label: 'Dexterity', profField: 'st_prof_dexterity' },
+    { key: 'constitution', label: 'Constitution', profField: 'st_prof_constitution' },
+    { key: 'intelligence', label: 'Intelligence', profField: 'st_prof_intelligence' },
+    { key: 'wisdom', label: 'Wisdom', profField: 'st_prof_wisdom' },
+    { key: 'charisma', label: 'Charisma', profField: 'st_prof_charisma' },
+];
+
 
 const CharacterSheetPage: React.FC = () => {
   const { characterIdFromRoute } = useParams<{ characterIdFromRoute: string }>();
@@ -37,32 +48,24 @@ const CharacterSheetPage: React.FC = () => {
         try {
           const charIdNum = parseInt(characterIdFromRoute, 10);
           if (isNaN(charIdNum)) throw new Error("Invalid character ID.");
-          
           const fetchedCharacter = await characterService.getCharacterById(auth.token, charIdNum);
           setCharacter(fetchedCharacter);
           if (fetchedCharacter) {
             setProficiencyBonus(calculateProficiencyBonus(fetchedCharacter.level));
           }
-        } catch (err: any) { 
-          setError(err.message || "Failed to load character sheet.");
-        } finally { 
-          setIsLoading(false); 
-        }
+        } catch (err: any) { setError(err.message || "Failed to load character sheet.");
+        } finally { setIsLoading(false); }
       } else if (!auth?.isLoading) {
-        setError("Authentication required or character ID missing."); 
-        setIsLoading(false);
+        setError("Authentication required or character ID missing."); setIsLoading(false);
       }
     };
-
-    if (!auth?.isLoading) { // Only fetch if auth context is not in its initial loading state
-        fetchCharacterSheet();
-    }
+    if (!auth?.isLoading) fetchCharacterSheet();
   }, [auth?.token, auth?.isLoading, characterIdFromRoute]);
 
   const getLevelUpAction = (char: Character | null): { path: string; text: string } | null => {
     if (!char || !char.level_up_status) return null;
     const charId = char.id; 
-    let actionText = "Continue"; // Generic default
+    let actionText = "Continue";
     let path = "";
     switch (char.level_up_status) {
       case "pending_hp": path = `/character/${charId}/level-up/hp`; actionText = "Confirm HP"; break;
@@ -81,23 +84,16 @@ const CharacterSheetPage: React.FC = () => {
     { name: 'wisdom', label: 'WIS' }, { name: 'charisma', label: 'CHA' },
   ];
 
-  if (isLoading) {
-    return <div className={styles.pageStyle}><p>Loading character sheet...</p></div>;
-  }
-  if (error) {
-    return <div className={styles.pageStyle}><p className={styles.errorText}>Error: {error}</p><Link to="/dashboard">Return to Dashboard</Link></div>;
-  }
-  if (!character) {
-    return <div className={styles.pageStyle}><p>Character not found.</p><Link to="/dashboard">Return to Dashboard</Link></div>;
-  }
+  if (isLoading) return <div className={styles.pageStyle}><p>Loading character sheet...</p></div>;
+  if (error) return <div className={styles.pageStyle}><p className={styles.errorText}>Error: {error}</p><Link to="/dashboard">Return to Dashboard</Link></div>;
+  if (!character) return <div className={styles.pageStyle}><p>Character not found.</p><Link to="/dashboard">Return to Dashboard</Link></div>;
 
   const levelUpAction = getLevelUpAction(character);
 
   return (
     <div className={styles.pageStyle}>
-      {/* Outer div for the wavy edge filter and textured background */}
-      <div className={styles.sheetContainerWithWavyEffect}> {/* This div's ::before will have the filter */}
-        <div className={styles.sheetContent}>
+      <div className={styles.sheetContainerWithWavyEffect}> {/* Or styles.sheetContainer if you renamed */}
+        <div className={styles.sheetContent}> 
           
           <header className={styles.pageHeader}>
             <h1>{character.name}</h1>
@@ -148,24 +144,39 @@ const CharacterSheetPage: React.FC = () => {
               </ul>
             </div>
 
+            {/* --- UPDATED SAVING THROWS SECTION --- */}
             <div className={styles.box}> 
               <h2 className={styles.sectionTitle}>Saving Throws</h2>
               <ul className={styles.statList}>
-                  <li className={styles.statItem}><span className={styles.statItemLabel}>Strength:</span> <span className={styles.statItemValue}>{calculateAbilityModifierDisplay(character.strength)}</span></li>
-                  <li className={styles.statItem}><span className={styles.statItemLabel}>Dexterity:</span> <span className={styles.statItemValue}>{calculateAbilityModifierDisplay(character.dexterity)}</span></li>
-                  <li className={styles.statItem}><span className={styles.statItemLabel}>Constitution:</span> <span className={styles.statItemValue}>{calculateAbilityModifierDisplay(character.constitution)}</span></li>
-                  <li className={styles.statItem}><span className={styles.statItemLabel}>Intelligence:</span> <span className={styles.statItemValue}>{calculateAbilityModifierDisplay(character.intelligence)}</span></li>
-                  <li className={styles.statItem}><span className={styles.statItemLabel}>Wisdom:</span> <span className={styles.statItemValue}>{calculateAbilityModifierDisplay(character.wisdom)}</span></li>
-                  <li className={`${styles.statItem} ${styles.lastStatItemInList || ''}`}><span className={styles.statItemLabel}>Charisma:</span> <span className={styles.statItemValue}>{calculateAbilityModifierDisplay(character.charisma)}</span></li>
+                {SAVING_THROW_ABILITIES.map(st => {
+                  const abilityScore = character[st.key] as number | null | undefined;
+                  const modifier = calculateAbilityModifier(abilityScore);
+                  const isProficient = character[st.profField] === true;
+                  const totalBonus = isProficient ? modifier + proficiencyBonus : modifier;
+                  
+                  return (
+                    <li key={st.key} className={styles.savingThrowItem}>
+                      <span className={styles.savingThrowLabel}>
+                        <span className={styles.savingThrowProficiencySymbol}>
+                          {isProficient ? '●' : '○'}
+                        </span>
+                        {st.label}
+                      </span>
+                      <span className={styles.savingThrowValue}>
+                        {totalBonus >= 0 ? `+${totalBonus}` : totalBonus}
+                      </span>
+                    </li>
+                  );
+                })}
               </ul>
-              <p style={{fontSize:'0.9em', color: 'var(--ink-color-light)', marginTop: '10px'}}>(Proficiencies not yet applied)</p>
             </div>
+            {/* --- END UPDATED SAVING THROWS SECTION --- */}
           </div>
           
-          <div className={styles.box} style={{marginTop: '0px'}}> {/* Adjusted margin if mainGridContainer handles bottom margin */}
+          <div className={styles.box} style={{marginTop: '0px'}}>
             <h2 className={styles.sectionTitle}>Skills</h2>
             {character.skills && character.skills.length > 0 ? (
-              <ul className={styles.skillsListThreeColumn}> {/* Using the 3-column style */}
+              <ul className={styles.skillsListThreeColumn}>
                 {character.skills.sort((a,b) => a.skill_definition.name.localeCompare(b.skill_definition.name)).map(skillAssoc => {
                   const abilityName = skillAssoc.skill_definition.ability_modifier_name.toLowerCase() as AbilityScoreKey; 
                   const abilityScore = character[abilityName] as number | null | undefined; 
@@ -214,7 +225,7 @@ const CharacterSheetPage: React.FC = () => {
                   ) : <p>No spells known.</p>}
               </div>
 
-               <div className={styles.box}> {/* Inventory and Currency Box */}
+              <div className={styles.box}>
                   <h2 className={styles.sectionTitle}>Inventory & Wealth</h2>
                   <div className={styles.inventoryHeader}>
                       <span className={styles.inventoryHeaderName}>Item</span>
@@ -225,15 +236,15 @@ const CharacterSheetPage: React.FC = () => {
                       {character.inventory_items.map(invItem => (
                           <li key={invItem.id} className={styles.statItem}>
                             <span className={styles.inventoryItemName} title={invItem.item_definition.description || invItem.item_definition.name}>
-                                {invItem.item_definition.name} {invItem.is_equipped ? "[E]" : ""}
+                                {invItem.item_definition.name} 
+                                {invItem.is_equipped && <span className={styles.inventoryItemEquippedMarker}> [E]</span>}
                             </span>
                             <span className={styles.inventoryItemQuantity}>{invItem.quantity}</span>
                           </li>
                       ))}
                       </ul>
-                  ) : <p>Inventory is empty.</p>}
+                  ) : <p style={{textAlign: 'center', fontStyle: 'italic', marginTop: '10px'}}>Inventory is empty.</p>}
                   
-                  {/* --- NEW: Currency Display --- */}
                   <div className={styles.currencyDisplay}>
                     <span className={styles.currencyItem}>PP: {character.currency_pp ?? 0}</span>
                     <span className={styles.currencyItem}>GP: {character.currency_gp ?? 0}</span>
@@ -241,7 +252,6 @@ const CharacterSheetPage: React.FC = () => {
                     <span className={styles.currencyItem}>SP: {character.currency_sp ?? 0}</span>
                     <span className={styles.currencyItem}>CP: {character.currency_cp ?? 0}</span>
                   </div>
-                  {/* --- END NEW: Currency Display --- */}
               </div>
           </div>
           
@@ -258,11 +268,13 @@ const CharacterSheetPage: React.FC = () => {
                   Return to Dashboard
               </Link>
           </div>
+
         </div> {/* End of .sheetContent */}
-      </div> {/* End of .sheetContainerWithWavyEffect (or .sheetContainer if you renamed in CSS) */}
+      </div> {/* End of .sheetContainerWithWavyEffect */}
     </div>
   );
 };
 
 export default CharacterSheetPage;
+
 

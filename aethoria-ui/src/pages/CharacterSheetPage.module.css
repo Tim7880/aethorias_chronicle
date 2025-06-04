@@ -273,6 +273,42 @@
     margin-left: 5px;
 }
 
+.savingThrowProficiencySymbol {
+    margin-right: 8px;
+    font-weight: bold;
+    min-width: 12px; /* Ensure alignment */
+    display: inline-block;
+    text-align: center;
+    color: var(--ink-color-dark); /* Or a specific color for proficiency */
+}
+
+.savingThrowItem { /* Similar to statItem but can be distinct if needed */
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0; /* Slightly less padding than general statItem perhaps */
+    border-bottom: 1px dotted rgba(58, 41, 28, 0.2);
+    font-size: 1.05em; /* Slightly adjusted font size */
+}
+.savingThrowItem:last-child {
+    border-bottom: none;
+}
+
+.savingThrowLabel {
+    font-family: var(--font-script-annotation);
+    font-size: 1.1em;
+    color: var(--ink-color-medium);
+    display: flex; /* To align symbol and text */
+    align-items: center;
+}
+
+.savingThrowValue {
+    font-family: var(--font-body-primary);
+    font-size: 1.2em; /* Slightly larger for the bonus */
+    font-weight: bold;
+    color: var(--ink-color-dark);
+}
+
 .errorText { 
     color: #a02c2c; /* Keeping your red */
     text-align: center; 

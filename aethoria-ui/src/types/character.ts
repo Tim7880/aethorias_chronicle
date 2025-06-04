@@ -51,6 +51,15 @@ export interface Character {
   currency_cp: number;
   // --- END CURRENCY FIELDS ---
 
+  // --- NEW SAVING THROW PROFICIENCY FIELDS ---
+  st_prof_strength: boolean;
+  st_prof_dexterity: boolean;
+  st_prof_constitution: boolean;
+  st_prof_intelligence: boolean;
+  st_prof_wisdom: boolean;
+  st_prof_charisma: boolean;
+  // --- END NEW SAVING THROW PROFICIENCY FIELDS ---
+
   created_at: string; 
   updated_at: string; 
 
