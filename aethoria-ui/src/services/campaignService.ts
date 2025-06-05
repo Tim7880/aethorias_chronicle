@@ -178,6 +178,25 @@ export const campaignService = {
       throw new Error(`Failed to fetch active campaign members (status: ${response.status})`);
     }
     return response.json() as Promise<CampaignMember[]>;
+  },
+  // --- END NEW FUNCTION ---
+  getMyCampaignMemberships: async (token: string): Promise<CampaignMember[]> => {
+    // This endpoint is /users/me/campaign-memberships/ on the backend
+    const response = await fetch(`${API_BASE_URL}/users/me/campaign-memberships/`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Unauthorized: Session may have expired.');
+      }
+      throw new Error(`Failed to fetch your campaign memberships (status: ${response.status})`);
+    }
+    return response.json() as Promise<CampaignMember[]>;
   }
   // --- END NEW FUNCTION ---
 };

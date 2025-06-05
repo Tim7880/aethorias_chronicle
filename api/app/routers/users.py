@@ -1,17 +1,18 @@
 # Path: api/app/routers/users.py
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import List # For List[CharacterSchema] later if added here
+from typing import List 
 
 from app.db.database import get_db
-from app.schemas.user import UserCreate, User as UserSchema, UserPasswordChange # <--- ADD UserPasswordChange
+from app.schemas.user import UserCreate, User as UserSchema, UserPasswordChange
+from app.schemas.campaign import CampaignMember as CampaignMemberSchema
 from app.crud import crud_user
 from app.models.user import User as UserModel
 from app.routers.auth import get_current_active_user
 
 router = APIRouter(
     prefix="/users", 
-    tags=["Users"]         
+    tags=["Users"]       
 )
 
 @router.post("/", response_model=UserSchema, status_code=status.HTTP_201_CREATED)
@@ -38,23 +39,33 @@ async def create_new_user(
 async def read_users_me(current_user: UserModel = Depends(get_current_active_user)):
     return current_user
 
-# --- NEW ENDPOINT ---
 @router.put("/me/password", status_code=status.HTTP_204_NO_CONTENT)
 async def change_current_user_password(
     password_data: UserPasswordChange,
     db: AsyncSession = Depends(get_db),
     current_user: UserModel = Depends(get_current_active_user)
 ):
-    """
-    Change current user's password.
-    """
-    # Optional: If UserPasswordChange included current_password, verify it here:
-    # if not verify_password(password_data.current_password, current_user.hashed_password):
-    #     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect current password")
-
     await crud_user.update_user_password(
         db=db, user_to_update=current_user, new_password=password_data.new_password
     )
-    # No content returned on successful password change, just a 204 status.
-    return
+    return # No content
+
+# --- NEW ENDPOINT for fetching current user's campaign memberships/requests ---
+@router.get("/me/campaign-memberships/", response_model=List[CampaignMemberSchema])
+async def read_my_campaign_memberships(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    current_user: UserModel = Depends(get_current_active_user)
+):
+    """
+    Retrieve all campaign memberships (pending, active, rejected, etc.) for the current user.
+    """
+    memberships = await crud_user.get_user_campaign_memberships(
+        db=db, user_id=current_user.id, skip=skip, limit=limit
+    )
+    return memberships
+# --- END NEW ENDPOINT ---
+
+
 

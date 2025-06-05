@@ -4,6 +4,12 @@ import type { Character } from './character'; // For member character details
 
 // This interface represents a campaign member, including details for join requests
 // It aligns with your preference for using Pick<>
+
+export interface CampaignBasicInfo {
+  id: number;
+  title: string;
+  dm_user_id: number; // Useful for context, matches backend CampaignBasicInfoSchema
+}
 export interface CampaignMember {
   id: number; // The ID of the CampaignMember record itself
   campaign_id: number; // Added for completeness, often useful
@@ -16,7 +22,7 @@ export interface CampaignMember {
   
   // Character details for the member/requester, including fields DM needs for join requests
   character?: Pick<Character, 'id' | 'name' | 'character_class' | 'level' | 'race' | 'alignment'> | null; 
-  
+  campaign?: CampaignBasicInfo | null;
   joined_at: string; // Or request_sent_at, status_updated_at - ISO datetime string
 }
 
