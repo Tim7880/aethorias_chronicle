@@ -181,6 +181,13 @@ const DashboardPage: React.FC = () => {
                     >
                       {membership.campaign?.title || `Campaign (ID: ${membership.campaign_id})`} {/* Ensured fallback */}
                     </Link>
+                     {/* --- ADDED DM USERNAME DISPLAY --- */}
+                    {membership.campaign?.dm?.username && (
+                        <span style={{fontSize: '0.8em', color: 'var(--ink-color-medium)', marginLeft: '10px'}}>
+                            (DM: {membership.campaign.dm.username})
+                        </span>
+                    )}
+                    {/* --- END DM USERNAME DISPLAY --- */}
                   </h3>
                   <p style={{margin: '2px 0', fontSize: '0.9em'}}>
                     Your Status: 

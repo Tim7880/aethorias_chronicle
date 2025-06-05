@@ -1,32 +1,40 @@
+
+
 // Path: src/types/campaign.ts
-import type { User } from './user'; // For DM and member user details
-import type { Character } from './character'; // For member character details
+import type { User } from './user'; 
+import type { Character } from './character'; 
 
-// This interface represents a campaign member, including details for join requests
-// It aligns with your preference for using Pick<>
+// Re-export types from their source files if needed by other parts of the frontend
+export type { CharacterSkill, SkillDefinition } from './skill'; 
+export type { CharacterItem, ItemDefinition, FrontendItemTypeEnumObject } from './item';   
+export type { CharacterSpell, SpellDefinition, FrontendSchoolOfMagicEnumObject } from './spell'; 
+export type { User } from './user'; // Re-exporting User for clarity if CampaignBasicInfo uses it
+export type { Character } from './character';
 
+
+// --- UPDATED: Campaign Basic Info for nesting ---
 export interface CampaignBasicInfo {
   id: number;
   title: string;
-  dm_user_id: number; // Useful for context, matches backend CampaignBasicInfoSchema
+  dm_user_id: number;
+  dm?: Pick<User, 'id' | 'username'> | null; // <--- ADDED DM details here
 }
+// --- END UPDATE ---
+
 export interface CampaignMember {
-  id: number; // The ID of the CampaignMember record itself
-  campaign_id: number; // Added for completeness, often useful
+  id: number; 
+  campaign_id: number; 
   user_id: number;
-  character_id?: number | null; // Character used by the player in this campaign
-  status: string; // e.g., "PENDING_APPROVAL", "ACTIVE", "REJECTED", "INACTIVE", "BANNED"
+  character_id?: number | null; 
+  status: string; 
   
-  // User details for the member/requester
   user?: Pick<User, 'id' | 'username'>; 
-  
-  // Character details for the member/requester, including fields DM needs for join requests
   character?: Pick<Character, 'id' | 'name' | 'character_class' | 'level' | 'race' | 'alignment'> | null; 
-  campaign?: CampaignBasicInfo | null;
-  joined_at: string; // Or request_sent_at, status_updated_at - ISO datetime string
+  campaign?: CampaignBasicInfo | null; // This now includes DM details via CampaignBasicInfo
+  
+  joined_at: string; 
 }
 
-// This interface should align with your backend's CampaignSchema response model
 export interface Campaign {
   id: number;
   title: string;
@@ -40,8 +48,8 @@ export interface Campaign {
   created_at: string; 
   updated_at: string; 
   
-  dm?: Pick<User, 'id' | 'username'>; // DM's basic info
-  members: CampaignMember[]; // List of members, now using the updated CampaignMember type
+  dm?: Pick<User, 'id' | 'username'>; 
+  members: CampaignMember[]; 
 }
 
 export interface PlayerCampaignJoinRequest {
