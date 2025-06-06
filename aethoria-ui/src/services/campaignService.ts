@@ -1,11 +1,7 @@
 // Path: src/services/campaignService.ts
 import type { Campaign, CampaignMember, PlayerCampaignJoinRequest } from '../types/campaign'; // Added PlayerCampaignJoinRequest
-//import type { ASISelectionRequest, ExpertiseSelectionRequest, RogueArchetypeSelectionRequest } from '../types/character';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
-
-// Assuming CharacterCreatePayload is defined elsewhere or not needed directly in this service
-// If it is, ensure it's imported or defined.
 
 export const campaignService = {
   getCampaigns: async (token: string, asDM: boolean): Promise<Campaign[]> => {
@@ -49,7 +45,6 @@ export const campaignService = {
     return response.json() as Promise<Campaign[]>;
   },
 
-  // --- MODIFIED FUNCTION to accept and send payload ---
   requestToJoinCampaign: async (
     token: string, 
     campaignId: number, 
@@ -63,7 +58,6 @@ export const campaignService = {
         },
         body: JSON.stringify(payload), // Send the payload as JSON body
     });
-  // --- END MODIFICATION ---
 
     if (!response.ok) {
         let errorDetail = `Request to join campaign failed: ${response.status}`;
@@ -152,7 +146,7 @@ export const campaignService = {
     }
     return response.json() as Promise<CampaignMember>;
   },
-  // --- NEW FUNCTION to get active campaign members ---
+  
   getActiveCampaignMembers: async (token: string, campaignId: number): Promise<CampaignMember[]> => {
     const url = new URL(`${API_BASE_URL}/campaigns/${campaignId}/members`); // Assuming trailing slash for consistency
     url.searchParams.append('status', 'active'); // Filter by ACTIVE status
@@ -179,7 +173,7 @@ export const campaignService = {
     }
     return response.json() as Promise<CampaignMember[]>;
   },
-  // --- END NEW FUNCTION ---
+  
   getMyCampaignMemberships: async (token: string): Promise<CampaignMember[]> => {
     // This endpoint is /users/me/campaign-memberships/ on the backend
     const response = await fetch(`${API_BASE_URL}/users/me/campaign-memberships/`, {
@@ -197,8 +191,39 @@ export const campaignService = {
       throw new Error(`Failed to fetch your campaign memberships (status: ${response.status})`);
     }
     return response.json() as Promise<CampaignMember[]>;
+  },
+
+  // --- NEW FUNCTION to cancel a user's own join request ---
+  cancelJoinRequest: async (token: string, campaignMemberId: number): Promise<void> => {
+    // This calls DELETE /api/v1/campaign-members/{campaign_member_id}/my-request
+    const response = await fetch(`${API_BASE_URL}/campaign-members/${campaignMemberId}/my-request`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      let errorDetail = `Canceling join request failed: ${response.status}`;
+      try {
+          const errorData = await response.json();
+          if (errorData && errorData.detail) {
+              errorDetail = Array.isArray(errorData.detail) 
+                  ? errorData.detail.map((e: any) => e.msg || 'Unknown error detail').join(', ') 
+                  : String(errorData.detail);
+          }
+      } catch (e) { /* Ignore if error response is not JSON */ }
+      
+      if (response.status === 401) throw new Error('Unauthorized.');
+      if (response.status === 403) throw new Error(errorDetail || 'Forbidden: You are not authorized to cancel this request.');
+      if (response.status === 404) throw new Error('Join request not found.');
+      throw new Error(errorDetail);
+    }
+   
+    return;
   }
   // --- END NEW FUNCTION ---
+  
 };
 
 

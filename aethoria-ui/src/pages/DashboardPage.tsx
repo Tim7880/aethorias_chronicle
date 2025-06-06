@@ -21,8 +21,6 @@ const DashboardPage: React.FC = () => {
   const [isLoadingDmCampaigns, setIsLoadingDmCampaigns] = useState<boolean>(true);
   const [dmCampaignError, setDmCampaignError] = useState<string | null>(null);
 
-  // Removed playerCampaigns and its loading/error states as it's now covered by myCampaignMemberships
-
   const [myCampaignMemberships, setMyCampaignMemberships] = useState<CampaignMember[]>([]);
   const [isLoadingMyMemberships, setIsLoadingMyMemberships] = useState<boolean>(true);
   const [myMembershipsError, setMyMembershipsError] = useState<string | null>(null);
@@ -49,11 +47,7 @@ const DashboardPage: React.FC = () => {
           campaignService.getMyCampaignMemberships(auth.token)
         ]);
         setCharacters(userCharacters);
-        setDmCampaigns(userDmCampaigns);
-        
-// --- ADD CONSOLE LOG TO INSPECT userMemberships ---
-        console.log("Fetched User Campaign Memberships:", userMemberships); 
-        // --- END CONSOLE LOG ---
+        setDmCampaigns(userDmCampaigns);       
 
         setMyCampaignMemberships(userMemberships);
 
@@ -233,19 +227,10 @@ const DashboardPage: React.FC = () => {
         <div style={{marginTop: '20px'}}> <ThemedButton variant="red" runeSymbol="📜" onClick={() => navigate('/create-campaign')}>Forge New Campaign</ThemedButton> </div>
       </div>
 
-      {/* Campaigns You're In Section (REMOVED AS IT'S REDUNDANT) */}
-      {/* <div className={stylesFromSheet.box} style={{ marginBottom: '30px' }}>
-         <h2 style={{...sectionTitleStyle, fontSize: '2em' }}>Campaigns You're In (as Player)</h2>
-        {(isLoadingPlayerCampaigns && !playerCampaigns.length && !playerCampaignError) && <p>Loading your active campaigns...</p>}
-        {playerCampaignError && <p className={stylesFromSheet.errorText}>{playerCampaignError}</p>}
-        {!isLoadingPlayerCampaigns && !playerCampaignError && playerCampaigns.length === 0 && ( <p>You have not yet joined any campaigns as an active player.</p> )}
-        {!isLoadingPlayerCampaigns && !playerCampaignError && playerCampaigns.length > 0 && ( <ul style={listStyle}> {playerCampaigns.map(camp => ( <li key={camp.id} style={listItemStyle}> <div style={characterInfoStyle}> <h3 style={{fontFamily: 'var(--font-heading-ornate)', fontSize: '1.8em', margin: '0 0 10px 0'}}> <Link to={`/campaigns/${camp.id}/play`} style={{color: 'var(--ink-color-dark)', textDecoration: 'none'}}> {camp.title} </Link> </h3> <p style={{margin: '5px 0', fontSize: '0.9em'}}>DM: {camp.dm?.username || 'Unknown'}</p> </div> </li> ))} </ul> )}
-        <div style={{marginTop: '20px'}}> <ThemedButton variant="green" runeSymbol="🗺️" onClick={() => navigate('/discover-campaigns')}>Discover Campaigns</ThemedButton> </div>
-      </div>
-      */}
+      {}
+      {}
     </div>
   );
 };
 
 export default DashboardPage;
-

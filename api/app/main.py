@@ -12,6 +12,7 @@ from app.routers import users as user_router
 from app.routers import auth as auth_router
 from app.routers import characters as character_router
 from app.routers import campaigns as campaign_router
+from app.routers import campaign_members as campaign_member_router
 from app.routers import skills as skill_router
 from app.routers import items as item_router
 from app.routers import spells as spell_router
@@ -73,6 +74,7 @@ app.include_router(campaign_router.router, prefix=settings.API_V1_STR)
 app.include_router(skill_router.router, prefix=settings.API_V1_STR)
 app.include_router(item_router.router, prefix=settings.API_V1_STR)
 app.include_router(spell_router.router, prefix=settings.API_V1_STR)
+app.include_router(campaign_member_router.router, prefix=settings.API_V1_STR)
 app.include_router(admin_router.router, prefix=settings.API_V1_STR) # <--- INCLUDE THE ADMIN ROUTER
 
 @app.get("/")
