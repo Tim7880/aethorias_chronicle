@@ -55,6 +55,7 @@ async def get_campaign(db: AsyncSession, campaign_id: int) -> Optional[CampaignM
             selectinload(CampaignModel.dm), 
             selectinload(CampaignModel.members).options( # Eager load members AND their nested details
                 selectinload(CampaignMemberModel.user),
+                selectinload(CampaignMemberModel.campaign),
                 selectinload(CampaignMemberModel.character).options(
                     selectinload(CharacterModel.skills).selectinload(CharacterSkillModel.skill_definition),
                     selectinload(CharacterModel.inventory_items).selectinload(CharacterItemModel.item_definition),
@@ -146,10 +147,8 @@ async def update_campaign(
         setattr(campaign, field, value)
     db.add(campaign)
     await db.commit()
-    updated_campaign_loaded = await get_campaign(db=db, campaign_id=campaign.id)
-    if not updated_campaign_loaded:
-        raise Exception("Failed to retrieve campaign after update for response.")
-    return updated_campaign_loaded
+    await db.refresh(campaign)
+    return await get_campaign(db=db, campaign_id=campaign.id) # Re-fetch fully loaded
 
 async def delete_campaign(
     db: AsyncSession, *, campaign_id: int, dm_user_id: int
@@ -282,6 +281,11 @@ async def get_campaign_members( # MODIFIED FOR EAGER LOADING
 ) -> List[CampaignMemberModel]:
     query = select(CampaignMemberModel).options(
         selectinload(CampaignMemberModel.user),
+         # --- ADDED EAGER LOADING FOR CAMPAIGN ---
+            selectinload(CampaignMemberModel.campaign).options(
+                selectinload(CampaignModel.dm)
+            ),
+            # --- END ADDITION ---
         selectinload(CampaignMemberModel.character).options(
             selectinload(CharacterModel.skills).selectinload(CharacterSkillModel.skill_definition),
             selectinload(CharacterModel.inventory_items).selectinload(CharacterItemModel.item_definition),
