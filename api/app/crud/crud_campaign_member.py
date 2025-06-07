@@ -9,54 +9,62 @@ from app.models.campaign_member import CampaignMember as CampaignMemberModel, Ca
 from app.models.campaign import Campaign as CampaignModel
 from app.models.user import User as UserModel
 from app.models.character import Character as CharacterModel
+from app.models.character_skill import CharacterSkill as CharacterSkillModel
+from app.models.item import Item as ItemModel
+from app.models.character_item import CharacterItem as CharacterItemModel
+from app.models.spell import Spell as SpellModel
+from app.models.character_spell import CharacterSpell as CharacterSpellModel
+
 
 async def delete_user_join_request(
     db: AsyncSession, *, campaign_member_id: int, requesting_user_id: int
 ) -> CampaignMemberModel:
     """
     Deletes a user's own campaign join request.
-
-    - Verifies the join request exists.
-    - Verifies the user making the request is the one who created it.
-    - Verifies the request is still in 'PENDING_APPROVAL' status.
+    It fetches the full object first to return for the response, then deletes.
     """
-    # Fetch the specific membership record to check its details
+    # Step 1: Fetch the full object for the response, with all relationships loaded.
     result = await db.execute(
         select(CampaignMemberModel)
         .options(
-            selectinload(CampaignMemberModel.campaign).selectinload(CampaignModel.dm),
             selectinload(CampaignMemberModel.user),
-            selectinload(CampaignMemberModel.character)
+            selectinload(CampaignMemberModel.campaign).options(selectinload(CampaignModel.dm)),
+            selectinload(CampaignMemberModel.character).options(
+                selectinload(CharacterModel.skills).selectinload(CharacterSkillModel.skill_definition),
+                selectinload(CharacterModel.inventory_items).selectinload(CharacterItemModel.item_definition),
+                selectinload(CharacterModel.known_spells).selectinload(CharacterSpellModel.spell_definition)
+            )
         )
         .filter(CampaignMemberModel.id == campaign_member_id)
     )
-    join_request = result.scalars().first()
+    join_request_to_delete = result.scalars().first()
 
-    # --- VALIDATION CHECKS ---
-    if not join_request:
+
+    # Step 2: Validation checks
+    if not join_request_to_delete:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, 
             detail="Join request not found."
         )
 
-    if join_request.user_id != requesting_user_id:
+    if join_request_to_delete.user_id != requesting_user_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, 
             detail="You are not authorized to cancel this join request."
         )
 
-    if join_request.status != CampaignMemberStatusEnum.PENDING_APPROVAL:
+    if join_request_to_delete.status != CampaignMemberStatusEnum.PENDING_APPROVAL:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"This request cannot be canceled as its status is '{join_request.status.value}', not 'pending_approval'."
+            detail=f"This request cannot be canceled as its status is '{join_request_to_delete.status.value}', not 'pending_approval'."
         )
     
-    # --- DELETE OPERATION ---
-    await db.delete(join_request)
+    # Step 3: Delete operation
+    await db.delete(join_request_to_delete)
     await db.commit()
 
-    # The object still holds the data from before it was deleted, so we can return it
-    # for the API response to confirm what was deleted.
-    return join_request
+    # Step 4: Return the object data we fetched before deleting
+    return join_request_to_delete
+
 
 

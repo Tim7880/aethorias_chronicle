@@ -26,6 +26,7 @@ const DashboardPage: React.FC = () => {
   const [myMembershipsError, setMyMembershipsError] = useState<string | null>(null);
   
   const [generalError, setGeneralError] = useState<string | null>(null);
+  const [actionStatus, setActionStatus] = useState<Record<number, string>>({}); // For tracking cancel actions
 
   const fetchData = useCallback(async () => {
     if (auth?.token && auth?.isAuthenticated) {
@@ -38,22 +39,18 @@ const DashboardPage: React.FC = () => {
         const [
             userCharacters, 
             userDmCampaigns, 
-            // userPlayerCampaigns, // Removed
             userMemberships 
         ] = await Promise.all([
           characterService.getCharacters(auth.token),
-          campaignService.getCampaigns(auth.token, true), // as DM
-          // campaignService.getCampaigns(auth.token, false), // Removed call for player campaigns
+          campaignService.getCampaigns(auth.token, true),
           campaignService.getMyCampaignMemberships(auth.token)
         ]);
         setCharacters(userCharacters);
-        setDmCampaigns(userDmCampaigns);       
-
+        setDmCampaigns(userDmCampaigns);
         setMyCampaignMemberships(userMemberships);
 
       } catch (err: any) {
         console.error("Failed to fetch dashboard data:", err);
-        // Update error setting
         if (!characters.length) setCharError(err.message || "Could not load characters.");
         if (!dmCampaigns.length) setDmCampaignError(err.message || "Could not load DM campaigns.");
         if (!myCampaignMemberships.length) setMyMembershipsError(err.message || "Could not load your campaign statuses.");
@@ -67,14 +64,14 @@ const DashboardPage: React.FC = () => {
       setCharacters([]); setDmCampaigns([]); setMyCampaignMemberships([]);
       setIsLoadingChars(false); setIsLoadingDmCampaigns(false); setIsLoadingMyMemberships(false);
     }
-  }, [auth?.token, auth?.isAuthenticated, auth?.isLoading, characters.length, dmCampaigns.length, myCampaignMemberships.length]); // Added lengths to deps to avoid stale errors
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auth?.token, auth?.isAuthenticated, auth?.isLoading]);
 
   useEffect(() => {
     if (!auth?.isLoading) { 
         fetchData();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps 
-  }, [auth?.token, auth?.isAuthenticated, auth?.isLoading]); // fetchData is stable due to useCallback
+  }, [auth?.isLoading, fetchData]); // fetchData is now a stable dependency
 
   const getLevelUpPath = (character: Character): string | null => {
     if (!character.level_up_status) return null;
@@ -104,6 +101,30 @@ const DashboardPage: React.FC = () => {
       }
     }
   };
+
+  // --- NEW: Cancel Join Request Handler ---
+  const handleCancelJoinRequest = async (campaignMemberId: number, campaignTitle: string) => {
+    if (!auth?.token) {
+      setGeneralError("Authentication required to cancel requests.");
+      return;
+    }
+    if (window.confirm(`Are you sure you want to cancel your request to join "${campaignTitle}"?`)) {
+      setGeneralError(null);
+      setActionStatus(prev => ({...prev, [campaignMemberId]: "Canceling..."}));
+      try {
+        await campaignService.cancelJoinRequest(auth.token, campaignMemberId);
+        setMyCampaignMemberships(prevMemberships => 
+            prevMemberships.filter(m => m.id !== campaignMemberId)
+        );
+        alert("Your join request has been successfully canceled.");
+      } catch (err: any) {
+        console.error("Failed to cancel join request:", err);
+        setGeneralError(err.message || "Could not cancel your request.");
+        setActionStatus(prev => ({...prev, [campaignMemberId]: "Error"}));
+      }
+    }
+  };
+  // --- END NEW ---
 
   const pageStyle: React.CSSProperties = { padding: '20px', fontFamily: 'var(--font-body-primary)', };
   const sectionTitleStyle: React.CSSProperties = { fontFamily: 'var(--font-heading-ornate)', color: 'var(--ink-color-dark)', fontSize: '2.5em', borderBottom: '1px solid var(--ink-color-light)', paddingBottom: '0.3em', marginBottom: '1em', };
@@ -154,9 +175,8 @@ const DashboardPage: React.FC = () => {
         <div style={{marginTop: '20px'}}> <ThemedButton variant="green" runeSymbol="+" onClick={() => navigate('/create-character')} tooltipText="Chronicle a new adventurer"> Create New Character </ThemedButton> </div>
       </div>
 
-      {/* --- My Campaign Applications & Memberships Section --- */}
       <div className={stylesFromSheet.box} style={{ marginBottom: '30px' }}>
-        <h2 style={{...sectionTitleStyle, fontSize: '2em' }}>My Campaign Involvements</h2> {/* Renamed title */}
+        <h2 style={{...sectionTitleStyle, fontSize: '2em' }}>My Campaign Involvements</h2>
         {(isLoadingMyMemberships && !myCampaignMemberships.length && !myMembershipsError) && <p>Loading your campaign statuses...</p>}
         {myMembershipsError && <p className={stylesFromSheet.errorText}>{myMembershipsError}</p>}
         {!isLoadingMyMemberships && !myMembershipsError && myCampaignMemberships.length === 0 && (
@@ -168,20 +188,17 @@ const DashboardPage: React.FC = () => {
               <li key={`membership-${membership.id}`} style={listItemStyle}>
                 <div style={characterInfoStyle}>
                   <h3 style={{fontFamily: 'var(--font-heading-ornate)', fontSize: '1.6em', margin: '0 0 5px 0'}}>
-                    {/* Link to view campaign details or play page if active */}
                     <Link 
                         to={membership.status.toLowerCase() === 'active' ? `/campaigns/${membership.campaign_id}/play` : `/campaigns/${membership.campaign_id}/view`} 
                         style={{color: 'var(--ink-color-dark)', textDecoration: 'none'}}
                     >
-                      {membership.campaign?.title || `Campaign (ID: ${membership.campaign_id})`} {/* Ensured fallback */}
+                      {membership.campaign?.title || `Campaign (ID: ${membership.campaign_id})`}
                     </Link>
-                     {/* --- ADDED DM USERNAME DISPLAY --- */}
                     {membership.campaign?.dm?.username && (
                         <span style={{fontSize: '0.8em', color: 'var(--ink-color-medium)', marginLeft: '10px'}}>
                             (DM: {membership.campaign.dm.username})
                         </span>
                     )}
-                    {/* --- END DM USERNAME DISPLAY --- */}
                   </h3>
                   <p style={{margin: '2px 0', fontSize: '0.9em'}}>
                     Your Status: 
@@ -195,14 +212,24 @@ const DashboardPage: React.FC = () => {
                      </p>
                   )}
                 </div>
+                {/* --- UPDATED: Actions Container --- */}
                 <div style={actionsContainerStyle}>
                   {membership.status.toLowerCase() === 'pending_approval' && (
-                    <ThemedButton variant='red' runeSymbol='✖️' tooltipText='Cancel Join Request' style={{fontSize:'0.8em', padding: '6px 10px'}}>Cancel</ThemedButton>
+                    <ThemedButton 
+                        onClick={() => handleCancelJoinRequest(membership.id, membership.campaign?.title || 'this campaign')}
+                        variant='red' 
+                        runeSymbol='✖️' 
+                        tooltipText='Cancel Join Request' 
+                        style={{fontSize:'0.8em', padding: '6px 10px'}}
+                        disabled={!!actionStatus[membership.id]} // Disable button during action
+                    >
+                        {actionStatus[membership.id] || "Cancel"}
+                    </ThemedButton>
                   )}
                    {membership.status.toLowerCase() === 'active' && (
                     <ThemedButton 
                         variant={undefined}
-                        runeSymbol='⚔️' // Changed rune for "Go to Campaign"
+                        runeSymbol='⚔️' 
                         tooltipText='Go to Campaign' 
                         onClick={() => navigate(`/campaigns/${membership.campaign_id}/play`)} 
                         style={{fontSize:'0.9em', padding: '6px 10px'}}
@@ -210,8 +237,8 @@ const DashboardPage: React.FC = () => {
                         Play
                     </ThemedButton>
                   )}
-                  {/* TODO: Add "Leave Campaign" button if status is ACTIVE */}
                 </div>
+                {/* --- END UPDATE --- */}
               </li>
             ))}
           </ul>
@@ -226,9 +253,6 @@ const DashboardPage: React.FC = () => {
         {!isLoadingDmCampaigns && !dmCampaignError && dmCampaigns.length > 0 && ( <ul style={listStyle}> {dmCampaigns.map(camp => ( <li key={camp.id} style={listItemStyle}> <div style={characterInfoStyle}> <h3 style={{fontFamily: 'var(--font-heading-ornate)', fontSize: '1.8em', margin: '0 0 10px 0'}}> <Link to={`/campaigns/${camp.id}/manage`} style={{color: 'var(--ink-color-dark)', textDecoration: 'none'}}> {camp.title} </Link> </h3> <p style={{margin: '5px 0', fontSize: '0.9em'}}>Status: {camp.is_open_for_recruitment ? "Open" : "Closed"}</p> <p style={{margin: '5px 0', fontSize: '0.9em'}}>{camp.members?.length || 0} member(s)</p> </div> </li> ))} </ul> )}
         <div style={{marginTop: '20px'}}> <ThemedButton variant="red" runeSymbol="📜" onClick={() => navigate('/create-campaign')}>Forge New Campaign</ThemedButton> </div>
       </div>
-
-      {}
-      {}
     </div>
   );
 };
