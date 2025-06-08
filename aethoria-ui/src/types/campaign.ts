@@ -1,26 +1,18 @@
-
-
 // Path: src/types/campaign.ts
 import type { User } from './user'; 
 import type { Character } from './character'; 
 
-// Re-export types from their source files if needed by other parts of the frontend
 export type { CharacterSkill, SkillDefinition } from './skill'; 
 export type { CharacterItem, ItemDefinition, FrontendItemTypeEnumObject } from './item';   
 export type { CharacterSpell, SpellDefinition, FrontendSchoolOfMagicEnumObject } from './spell'; 
 export type { User } from './user'; // Re-exporting User for clarity if CampaignBasicInfo uses it
 export type { Character } from './character';
-
-
-// --- UPDATED: Campaign Basic Info for nesting ---
 export interface CampaignBasicInfo {
   id: number;
   title: string;
   dm_user_id: number;
   dm?: Pick<User, 'id' | 'username'> | null; // <--- ADDED DM details here
 }
-// --- END UPDATE ---
-
 export interface CampaignMember {
   id: number; 
   campaign_id: number; 
@@ -34,7 +26,6 @@ export interface CampaignMember {
   
   joined_at: string; 
 }
-
 export interface Campaign {
   id: number;
   title: string;
@@ -51,7 +42,16 @@ export interface Campaign {
   dm?: Pick<User, 'id' | 'username'>; 
   members: CampaignMember[]; 
 }
-
 export interface PlayerCampaignJoinRequest {
   character_id?: number | null;
+}
+
+export interface CampaignCreatePayload {
+    title: string;
+    description?: string | null;
+    banner_image_url?: string | null;
+    max_players?: number | null;
+    next_session_utc?: string | null; 
+    house_rules?: string | null;
+    is_open_for_recruitment?: boolean;
 }

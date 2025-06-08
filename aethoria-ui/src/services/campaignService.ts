@@ -1,5 +1,5 @@
 // Path: src/services/campaignService.ts
-import type { Campaign, CampaignMember, PlayerCampaignJoinRequest } from '../types/campaign'; // Added PlayerCampaignJoinRequest
+import type { Campaign, CampaignMember, PlayerCampaignJoinRequest, CampaignCreatePayload } from '../types/campaign'; // Added PlayerCampaignJoinRequest
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 
@@ -175,7 +175,6 @@ export const campaignService = {
   },
   
   getMyCampaignMemberships: async (token: string): Promise<CampaignMember[]> => {
-    // This endpoint is /users/me/campaign-memberships/ on the backend
     const response = await fetch(`${API_BASE_URL}/users/me/campaign-memberships/`, {
       method: 'GET',
       headers: {
@@ -193,9 +192,7 @@ export const campaignService = {
     return response.json() as Promise<CampaignMember[]>;
   },
 
-  // --- NEW FUNCTION to cancel a user's own join request ---
   cancelJoinRequest: async (token: string, campaignMemberId: number): Promise<void> => {
-    // This calls DELETE /api/v1/campaign-members/{campaign_member_id}/my-request
     const response = await fetch(`${API_BASE_URL}/campaign-members/${campaignMemberId}/my-request`, {
       method: 'DELETE',
       headers: {
@@ -221,8 +218,33 @@ export const campaignService = {
     }
    
     return;
+  },
+  createCampaign: async (token: string, payload: CampaignCreatePayload): Promise<Campaign> => {
+    const response = await fetch(`${API_BASE_URL}/campaigns/`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+        let errorDetail = `Campaign creation failed: ${response.status}`;
+        try {
+            const errorData = await response.json();
+            if (errorData && errorData.detail) {
+                if (Array.isArray(errorData.detail)) {
+                    errorDetail = errorData.detail.map((err: any) => `${err.loc.join('.')} - ${err.msg}`).join('; ');
+                } else {
+                    errorDetail = errorData.detail;
+                }
+            }
+        } catch (e) { /* Ignore */ }
+        throw new Error(errorDetail);
+    }
+    return response.json() as Promise<Campaign>;
   }
-  // --- END NEW FUNCTION ---
   
 };
 
