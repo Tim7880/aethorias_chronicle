@@ -1,0 +1,110 @@
+/* Path: src/pages/CampaignViewPage.module.css */
+
+.pageContainer {
+    padding: 20px;
+    max-width: 900px;
+    margin: 20px auto;
+    font-family: var(--font-body-primary);
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px double var(--ink-color-light);
+}
+
+.title {
+    font-family: var(--font-heading-ornate);
+    font-size: clamp(2.8rem, 10vw, 4rem);
+    color: var(--ink-color-dark);
+    margin-bottom: 0.25em;
+}
+
+.dmInfo {
+    font-size: 1.1em;
+    color: var(--ink-color-medium);
+    font-style: italic;
+}
+
+.mainGrid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 2rem;
+    margin-top: 1.5rem;
+}
+
+/* On smaller screens, stack the columns */
+@media (max-width: 768px) {
+    .mainGrid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.mainContent {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.sectionBox {
+    background-color: var(--parchment-highlight);
+    border: 1px solid var(--ink-color-light);
+    border-radius: 6px;
+    padding: 20px;
+    box-shadow: 0px 3px 10px rgba(0,0,0,0.05);
+}
+
+.sectionTitle {
+    font-family: var(--font-heading-ornate);
+    font-size: 2em;
+    color: var(--ink-color-dark);
+    border-bottom: 1px solid var(--ink-color-light);
+    padding-bottom: 0.3em;
+    margin: 0 0 1em 0;
+}
+
+.description {
+    font-size: 1.1em;
+    line-height: 1.7;
+    white-space: pre-wrap; /* Respects line breaks in the text */
+}
+
+.memberList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.memberItem {
+    display: flex;
+    flex-direction: column;
+    padding: 10px 0;
+    border-bottom: 1px dotted var(--ink-color-light);
+}
+.memberItem:last-child {
+    border-bottom: none;
+}
+
+.memberName {
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+.memberCharacter {
+    font-size: 0.9em;
+    color: var(--ink-color-medium);
+    padding-left: 10px;
+}
+
+.errorText { 
+    color: #a02c2c; 
+    text-align: center;
+    font-weight: bold;
+}

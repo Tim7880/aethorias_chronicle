@@ -15,6 +15,7 @@ import LevelUpASIPage from './pages/LevelUpASIPage';
 import CreateCampaignPage from './pages/CreateCampaignPage';
 import DiscoverCampaignsPage from './pages/DiscoverCampaignsPage';
 import CampaignManagementPage from './pages/CampaignManagementPage';
+import CampaignViewPage from './pages/CampaignViewPage';
 import { useAuth } from './contexts/AuthContext';
 import './App.css'; 
 
@@ -110,6 +111,7 @@ function App() {
             <Route path="/characters/:characterIdFromRoute/view" element={<CharacterSheetPage />} />
             <Route path="/discover-campaigns" element={<DiscoverCampaignsPage />} />
             <Route path="/campaigns/:campaignId/manage" element={<CampaignManagementPage />} />
+            <Route path="/campaigns/:campaignId/play" element={<CampaignViewPage />} />
             <Route path="/create-campaign" element={<CreateCampaignPage />} />
           </Route>
         </Route>
