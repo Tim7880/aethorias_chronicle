@@ -25,6 +25,38 @@ router = APIRouter(
     dependencies=[Depends(get_current_active_user)]
 )
 
+@router.post("/{campaign_id}/award-xp", response_model=List[CharacterSchema])
+async def dm_award_xp_to_characters(
+    campaign_id: int,
+    xp_award: XPAwardRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: UserModel = Depends(get_current_active_user)
+):
+    """
+    Allows the DM of a campaign to award XP to a list of characters in that campaign.
+    """
+    # 1. Verify current_user is the DM of this campaign
+    campaign = await crud_campaign.get_campaign(db=db, campaign_id=campaign_id)
+    if not campaign:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Campaign not found")
+    if campaign.dm_user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only the DM can award XP in this campaign."
+        )
+    
+    # 2. Call the CRUD function to handle the logic
+    try:
+        updated_characters = await crud_campaign.award_xp_to_characters(
+            db=db, 
+            campaign=campaign, 
+            character_ids=xp_award.character_ids, 
+            xp_to_add=xp_award.amount
+        )
+        return updated_characters
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
 @router.post("/", response_model=CampaignSchema, status_code=status.HTTP_201_CREATED)
 async def create_new_campaign(
     campaign_in: CampaignCreate,

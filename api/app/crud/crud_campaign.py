@@ -18,6 +18,40 @@ from app.models.character_spell import CharacterSpell as CharacterSpellModel # A
 
 from app.schemas.campaign import CampaignCreate as CampaignCreateSchema
 from app.schemas.campaign import CampaignUpdate as CampaignUpdateSchema
+from app.crud import crud_character
+
+async def award_xp_to_characters(
+    db: AsyncSession, *, campaign: CampaignModel, character_ids: List[int], xp_to_add: int
+) -> List[CharacterModel]:
+    """
+    Awards a specified amount of XP to a list of characters within a campaign.
+    Verifies that each character is an active member of the campaign.
+    """
+    if xp_to_add <= 0:
+        raise ValueError("XP to award must be a positive number.")
+
+    # Get all active character IDs in the campaign to validate against
+    active_member_char_ids = {
+        member.character_id for member in campaign.members 
+        if member.status == CampaignMemberStatusEnum.ACTIVE and member.character_id is not None
+    }
+
+    # Verify that all characters to be awarded are active members
+    for char_id in character_ids:
+        if char_id not in active_member_char_ids:
+            raise ValueError(f"Character with ID {char_id} is not an active member of this campaign.")
+
+    updated_characters = []
+    for char_id in character_ids:
+        # We can reuse the existing crud_character function
+        character_to_award = await crud_character.get_character(db=db, character_id=char_id)
+        if character_to_award:
+            updated_char = await crud_character.award_xp_to_character(
+                db=db, character=character_to_award, xp_to_add=xp_to_add
+            )
+            updated_characters.append(updated_char)
+    
+    return updated_characters
 
 # Helper function to consistently load CampaignMember with all details for schemas
 async def _get_fully_loaded_campaign_member(db: AsyncSession, campaign_member_id: int) -> Optional[CampaignMemberModel]:

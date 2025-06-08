@@ -1,7 +1,13 @@
 // Path: src/services/campaignService.ts
 import type { Campaign, CampaignMember, PlayerCampaignJoinRequest, CampaignCreatePayload } from '../types/campaign'; // Added PlayerCampaignJoinRequest
+import type { Character } from '../types/character';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
+
+export interface XpAwardPayload {
+    amount: number;
+    character_ids: number[];
+}
 
 export const campaignService = {
   getCampaigns: async (token: string, asDM: boolean): Promise<Campaign[]> => {
@@ -270,6 +276,50 @@ export const campaignService = {
       throw new Error(errorDetail);
     }
     return;
+  },
+  removeMemberByDM: async (token: string, campaignId: number, userIdToRemove: number): Promise<CampaignMember> => {
+    const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/members/${userIdToRemove}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+
+    if (!response.ok) {
+      let errorDetail = `Removing member failed: ${response.status}`;
+      try {
+          const errorData = await response.json();
+          if (errorData && errorData.detail) { errorDetail = String(errorData.detail); }
+      } catch (e) { /* Ignore */ }
+      
+      if (response.status === 401) throw new Error('Unauthorized.');
+      if (response.status === 403) throw new Error('Forbidden: Only the DM can remove members.');
+      if (response.status === 404) throw new Error('Campaign or member not found.');
+      throw new Error(errorDetail);
+    }
+    // Backend returns the removed member object on success
+    return response.json() as Promise<CampaignMember>;
+  },
+  awardXpToCharacters: async (token: string, campaignId: number, payload: XpAwardPayload): Promise<Character[]> => {
+    const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}/award-xp`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+        let errorDetail = `Awarding XP failed: ${response.status}`;
+        try {
+            const errorData = await response.json();
+            if (errorData && errorData.detail) {
+                errorDetail = String(errorData.detail);
+            }
+        } catch (e) { /* Ignore */ }
+        throw new Error(errorDetail);
+    }
+    // Backend returns a list of the updated Character objects
+    return response.json() as Promise<Character[]>;
   }
 
 };
