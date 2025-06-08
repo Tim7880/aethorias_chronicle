@@ -244,8 +244,34 @@ export const campaignService = {
         throw new Error(errorDetail);
     }
     return response.json() as Promise<Campaign>;
-  }
+  },
   
+  leaveCampaign: async (token: string, campaignMemberId: number): Promise<void> => {
+    // This calls DELETE /api/v1/campaign-members/{campaign_member_id}/leave
+    const response = await fetch(`${API_BASE_URL}/campaign-members/${campaignMemberId}/leave`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      let errorDetail = `Leaving campaign failed: ${response.status}`;
+      try {
+          const errorData = await response.json();
+          if (errorData && errorData.detail) {
+              errorDetail = String(errorData.detail);
+          }
+      } catch (e) { /* Ignore if response body is not JSON */ }
+      
+      if (response.status === 401) throw new Error('Unauthorized.');
+      if (response.status === 403) throw new Error(errorDetail || 'Forbidden: You are not authorized to perform this action.');
+      if (response.status === 404) throw new Error('Campaign membership not found.');
+      throw new Error(errorDetail);
+    }
+    return;
+  }
+
 };
 
 
