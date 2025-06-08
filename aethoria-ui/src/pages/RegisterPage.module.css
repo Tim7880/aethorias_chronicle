@@ -1,0 +1,53 @@
+/* Path: src/pages/RegisterPage.module.css */
+
+.pageContainer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.formContainer {
+    background-color: var(--parchment-highlight);
+    padding: 30px 40px;
+    border-radius: 8px;
+    box-shadow: 0px 6px 18px rgba(0,0,0,0.15), 0px 0px 0px 1px var(--ink-color-light);
+    border: 1px solid rgba(120, 90, 70, 0.3);
+    width: 100%;
+    max-width: 450px;
+}
+
+.title {
+    font-family: var(--font-heading-ornate);
+    color: var(--ink-color-dark);
+    font-size: 2.8em;
+    margin-bottom: 1em;
+    text-align: center;
+}
+
+.errorText {
+    font-family: var(--font-body-primary);
+    color: #a02c2c; /* A thematic red */
+    margin-top: 1em;
+    min-height: 1.2em;
+    text-align: center;
+    font-weight: bold;
+}
+
+.buttonContainer {
+    margin-top: 2.5em;
+    text-align: center;
+}
+
+.linkContainer {
+    text-align: center;
+    margin-top: 1.5em;
+    font-family: var(--font-body-primary);
+}
+
+.link {
+    color: var(--ink-color-dark);
+    text-decoration: underline;
+    font-weight: bold;
+}
