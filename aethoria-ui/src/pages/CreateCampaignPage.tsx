@@ -18,7 +18,9 @@ const CreateCampaignPage: React.FC = () => {
     max_players: 8,
     house_rules: '',
     is_open_for_recruitment: true,
-    banner_image_url: ''
+    banner_image_url: '',
+    next_session_utc: '', // <--- ADDED
+    session_notes: ''     // <--- ADDED
   });
 
   const [error, setError] = useState<string | null>(null);
@@ -132,6 +134,34 @@ const CreateCampaignPage: React.FC = () => {
               placeholder="Any custom rules or variations for your game (e.g., 'Critical hits do max damage + roll', 'Potions are a bonus action')."
               disabled={isLoading}
               rows={3}
+            />
+          </div>
+          
+          <div className={styles.formGroup}>
+            <ThemedInput
+              label="Schedule First Session (Optional)"
+              id="next_session_utc"
+              name="next_session_utc"
+              type="datetime-local"
+              value={formData.next_session_utc || ''}
+              onChange={handleChange}
+              disabled={isLoading}
+            />
+          </div>
+          {/* --- END NEW --- */}
+
+          {/* --- NEW: Session Notes Input --- */}
+          <div className={styles.formGroup}>
+            <label htmlFor="session_notes" className={styles.label}>Session Notes (Optional)</label>
+            <textarea
+              id="session_notes"
+              name="session_notes"
+              value={formData.session_notes || ''}
+              onChange={handleChange}
+              className={styles.textarea}
+              placeholder="e.g., 'Session 0: Character Creation. Players will meet at the Yawning Portal tavern.'"
+              disabled={isLoading}
+              rows={4}
             />
           </div>
 

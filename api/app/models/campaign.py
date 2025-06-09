@@ -1,8 +1,9 @@
 # Path: api/app/models/campaign.py
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, func, Boolean # <--- ADD Boolean
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime, func, Boolean
 from sqlalchemy.orm import relationship
 from app.db.base_class import Base
 from typing import TYPE_CHECKING
+import sqlalchemy as sa # Import sa for server_default text
 
 if TYPE_CHECKING:
     from .user import User
@@ -22,7 +23,11 @@ class Campaign(Base):
     next_session_utc = Column(DateTime(timezone=True), nullable=True)
     house_rules = Column(Text, nullable=True)
 
-    is_open_for_recruitment = Column(Boolean, default=False, nullable=False) # <--- NEW FIELD
+    # --- NEW FIELD for Session Notes ---
+    session_notes = Column(Text, nullable=True)
+    # --- END NEW FIELD ---
+
+    is_open_for_recruitment = Column(Boolean, default=False, nullable=False, server_default=sa.text('false'))
 
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
@@ -33,7 +38,5 @@ class Campaign(Base):
         back_populates="campaign", 
         cascade="all, delete-orphan"
     )
-
-
 
     

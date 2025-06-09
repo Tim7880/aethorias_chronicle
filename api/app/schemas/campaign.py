@@ -59,6 +59,7 @@ class CampaignBase(BaseModel):
     next_session_utc: Optional[datetime] = None 
     house_rules: Optional[str] = None
     is_open_for_recruitment: Optional[bool] = Field(default=False)
+    session_notes: Optional[str] = None
 
 class CampaignCreate(CampaignBase):
     pass 
@@ -71,6 +72,7 @@ class CampaignUpdate(BaseModel):
     next_session_utc: Optional[datetime] = None
     house_rules: Optional[str] = None
     is_open_for_recruitment: Optional[bool] = None
+    session_notes: Optional[str] = None
 
 class CampaignInDBBase(CampaignBase):
     id: int

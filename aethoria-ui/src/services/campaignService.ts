@@ -1,5 +1,5 @@
 // Path: src/services/campaignService.ts
-import type { Campaign, CampaignMember, PlayerCampaignJoinRequest, CampaignCreatePayload } from '../types/campaign'; // Added PlayerCampaignJoinRequest
+import type { Campaign, CampaignMember, PlayerCampaignJoinRequest, CampaignCreatePayload, CampaignUpdatePayload } from '../types/campaign'; // Added PlayerCampaignJoinRequest
 import type { Character } from '../types/character';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
@@ -320,7 +320,33 @@ export const campaignService = {
     }
     // Backend returns a list of the updated Character objects
     return response.json() as Promise<Character[]>;
-  }
+  },
+
+  updateCampaign: async (token: string, campaignId: number, payload: CampaignUpdatePayload): Promise<Campaign> => {
+      const response = await fetch(`${API_BASE_URL}/campaigns/${campaignId}`, {
+          method: 'PUT', // This was missing, causing the 405 error
+          headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+      });
+      if (!response.ok) {
+          let errorDetail = `Updating campaign failed: ${response.status}`;
+          try {
+              const errorData = await response.json();
+              if (errorData && errorData.detail) {
+                  if (Array.isArray(errorData.detail)) {
+                      errorDetail = errorData.detail.map((err: any) => `${err.loc.join('.')} - ${err.msg}`).join('; ');
+                  } else {
+                      errorDetail = errorData.detail;
+                  }
+              }
+          } catch (e) { }
+          throw new Error(errorDetail);
+      }
+      return response.json() as Promise<Campaign>;
+  },
 
 };
 

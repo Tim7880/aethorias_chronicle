@@ -4,10 +4,17 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { campaignService } from '../services/campaignService';
 import type { XpAwardPayload } from '../services/campaignService';
-import type { Campaign, CampaignMember } from '../types/campaign';
+import type { Campaign, CampaignMember, CampaignUpdatePayload } from '../types/campaign';
 import ThemedButton from '../components/common/ThemedButton';
 import ThemedInput from '../components/common/ThemedInput';
 import styles from './CampaignManagementPage.module.css'; 
+
+// Helper to format UTC ISO string for datetime-local input
+const formatDateTimeForInput = (isoString: string | null | undefined): string => {
+    if (!isoString) return '';
+    // Slices '2025-06-08T19:48:05.886949Z' to '2025-06-08T19:48'
+    return isoString.slice(0, 16); 
+};
 
 const CampaignManagementPage: React.FC = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
@@ -21,6 +28,12 @@ const CampaignManagementPage: React.FC = () => {
   
   const [error, setError] = useState<string | null>(null);
   const [actionStatus, setActionStatus] = useState<Record<number, string>>({});
+
+const [sessionDate, setSessionDate] = useState('');
+  const [sessionNotes, setSessionNotes] = useState('');
+  const [isUpdatingSession, setIsUpdatingSession] = useState(false);
+  const [sessionUpdateSuccess, setSessionUpdateSuccess] = useState<string | null>(null);
+
   const [xpAmount, setXpAmount] = useState('');
   const [xpTargetMode, setXpTargetMode] = useState<'all' | 'select'>('all');
   const [selectedCharIdsForXp, setSelectedCharIdsForXp] = useState<number[]>([]);
@@ -45,6 +58,8 @@ const CampaignManagementPage: React.FC = () => {
         ]);
 
         setCampaign(campaignDetails);
+        setSessionDate(formatDateTimeForInput(campaignDetails.next_session_utc));
+        setSessionNotes(campaignDetails.session_notes || '');
         setJoinRequests(pendingRequestsData.filter(req => req.status === "pending_approval"));
         setActiveMembers(activeMembersData.filter(mem => mem.user_id !== campaignDetails.dm_user_id));
 
@@ -176,6 +191,31 @@ const CampaignManagementPage: React.FC = () => {
     }
   };
 
+  const handleUpdateSession = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!auth?.token || !campaignId) return;
+    
+    setIsUpdatingSession(true);
+    setSessionUpdateSuccess(null);
+    setError(null); // Clear main error
+
+    const payload: CampaignUpdatePayload = {
+      next_session_utc: sessionDate ? new Date(sessionDate).toISOString() : null,
+      session_notes: sessionNotes,
+    };
+    
+    try {
+      const updatedCampaign = await campaignService.updateCampaign(auth.token, parseInt(campaignId, 10), payload);
+      setCampaign(updatedCampaign); // Update the main campaign state
+      setSessionUpdateSuccess("Session details updated successfully!");
+      setTimeout(() => setSessionUpdateSuccess(null), 3000);
+    } catch (err: any) {
+      setError(err.message || "Failed to update session details.");
+    } finally {
+      setIsUpdatingSession(false);
+    }
+  };
+
   if (isLoading && !campaign) {
     return <div className={styles.pageStyle}><p>Loading campaign management...</p></div>;
   }
@@ -208,6 +248,47 @@ const CampaignManagementPage: React.FC = () => {
               </p>
             </div>
           )}
+          
+          <div className={styles.box}>
+            <h2 className={styles.sectionTitle}>Session Details</h2>
+            <form onSubmit={handleUpdateSession} className={styles.sessionForm}>
+              <div className={styles.formGroup}>
+                <ThemedInput
+                  label="Next Session Date & Time"
+                  id="next_session_utc"
+                  name="next_session_utc"
+                  type="datetime-local"
+                  value={sessionDate}
+                  onChange={(e) => setSessionDate(e.target.value)}
+                  disabled={isUpdatingSession}
+                />
+              </div>
+              <div className={styles.formGroup}>
+                <label htmlFor="session_notes" className={styles.label}>Session Notes</label>
+                <textarea
+                  id="session_notes"
+                  name="session_notes"
+                  value={sessionNotes}
+                  onChange={(e) => setSessionNotes(e.target.value)}
+                  className={styles.textarea}
+                  placeholder="e.g., 'Tonight, the party enters the Sunless Citadel. Prepare for kobolds and traps. Also, Kevin is bringing snacks.'"
+                  rows={6}
+                  disabled={isUpdatingSession}
+                />
+              </div>
+              {sessionUpdateSuccess && <p className={styles.successText}>{sessionUpdateSuccess}</p>}
+              <div className={styles.buttonContainer}>
+                <ThemedButton
+                  type="submit"
+                  variant="green"
+                  runeSymbol="💾"
+                  disabled={isUpdatingSession}
+                >
+                  {isUpdatingSession ? 'Saving...' : 'Update Session Info'}
+                </ThemedButton>
+              </div>
+            </form>
+          </div>
 
           <div className={styles.box}>
             <h2 className={styles.sectionTitle}>Pending Join Requests ({joinRequests.length})</h2>

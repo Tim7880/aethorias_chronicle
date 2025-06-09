@@ -3,18 +3,18 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { campaignService } from '../services/campaignService';
-import type { Campaign, CampaignMember } from '../types/campaign';
+import type { Campaign } from '../types/campaign';
 import ThemedButton from '../components/common/ThemedButton';
 import styles from './CampaignViewPage.module.css';
 
 const CampaignViewPage: React.FC = () => {
   const { campaignId } = useParams<{ campaignId: string }>();
   const auth = useAuth();
-  const navigate = useNavigate(); // For redirecting after leaving
+  const navigate = useNavigate();
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [isLeaving, setIsLeaving] = useState(false); // State for leave button
+  const [isLeaving, setIsLeaving] = useState(false);
 
   const loadCampaignData = useCallback(async () => {
     if (auth?.token && campaignId) {
@@ -51,11 +51,10 @@ const CampaignViewPage: React.FC = () => {
     }
   }, [auth?.isLoading, loadCampaignData]);
 
-  // --- NEW: Handler for leaving the campaign ---
   const handleLeaveCampaign = async () => {
+    // This check is now safe because the button is only rendered if campaign is not null
     if (!auth?.token || !campaign) return;
     
-    // Find the user's own membership record to get its ID
     const myMembership = campaign.members.find(m => m.user_id === auth.user?.id && m.status === 'active');
     if (!myMembership) {
         setError("Could not find your active membership in this campaign.");
@@ -68,7 +67,7 @@ const CampaignViewPage: React.FC = () => {
         try {
             await campaignService.leaveCampaign(auth.token, myMembership.id);
             alert("You have left the campaign.");
-            navigate('/dashboard'); // Redirect to dashboard
+            navigate('/dashboard');
         } catch (err: any) {
             console.error("Failed to leave campaign:", err);
             setError(err.message || "An error occurred while trying to leave the campaign.");
@@ -77,18 +76,26 @@ const CampaignViewPage: React.FC = () => {
         }
     }
   };
-  // --- END NEW ---
 
+  // --- START MODIFICATION ---
+  // These checks now happen at the top level of the component's return logic.
+  // This ensures that if any of these conditions are met, the component returns early
+  // and the rest of the code, which assumes 'campaign' is not null, will not run.
   if (isLoading) {
     return <div className={styles.pageContainer}><p>Loading Campaign...</p></div>;
   }
+
   if (error) {
     return <div className={styles.pageContainer}><p className={styles.errorText}>{error}</p><Link to="/dashboard">Back to Dashboard</Link></div>;
   }
+
+  // This is the crucial check that fixes the TypeScript errors.
   if (!campaign) {
     return <div className={styles.pageContainer}><p>Campaign not found.</p></div>;
   }
+  // --- END MODIFICATION ---
 
+  // Because of the `if (!campaign)` check above, TypeScript now knows that `campaign` cannot be null from this point forward.
   const activeMembers = campaign.members.filter(m => m.status.toLowerCase() === 'active');
   const isCurrentUserMember = activeMembers.some(m => m.user_id === auth.user?.id);
 
@@ -101,6 +108,26 @@ const CampaignViewPage: React.FC = () => {
 
       <main className={styles.mainGrid}>
         <section className={styles.mainContent}>
+          {/* Next Session & Notes Display */}
+          <div className={styles.sectionBox}>
+            <h2 className={styles.sectionTitle}>Next Session</h2>
+            {campaign.next_session_utc ? (
+              <p className={styles.description}>
+                <strong>When:</strong> {new Date(campaign.next_session_utc).toLocaleString(undefined, { dateStyle: 'full', timeStyle: 'short' })}
+              </p>
+            ) : (
+              <p className={styles.description}>The next session has not been scheduled yet.</p>
+            )}
+
+            {campaign.session_notes && (
+              <>
+                <h3 style={{marginTop: '1.5em', fontFamily: 'var(--font-script-annotation)'}}>Notes for Next Session:</h3>
+                <p className={styles.description}>{campaign.session_notes}</p>
+              </>
+            )}
+          </div>
+
+          {/* Campaign Details Section */}
           <div className={styles.sectionBox}>
             <h2 className={styles.sectionTitle}>Campaign Details</h2>
             {campaign.description ? (
@@ -109,6 +136,8 @@ const CampaignViewPage: React.FC = () => {
               <p>No description provided.</p>
             )}
           </div>
+
+          {/* House Rules Section */}
           {campaign.house_rules && (
             <div className={styles.sectionBox}>
               <h2 className={styles.sectionTitle}>House Rules</h2>
@@ -136,7 +165,7 @@ const CampaignViewPage: React.FC = () => {
             </ul>
           </div>
           
-          {/* --- NEW: Leave Campaign Button --- */}
+          {/* Leave Campaign Button */}
           {isCurrentUserMember && (
             <div className={styles.sectionBox} style={{marginTop: '1rem', textAlign: 'center'}}>
                 <ThemedButton 
@@ -150,7 +179,6 @@ const CampaignViewPage: React.FC = () => {
                 </ThemedButton>
             </div>
           )}
-          {/* --- END NEW --- */}
         </aside>
       </main>
     </div>
@@ -158,3 +186,4 @@ const CampaignViewPage: React.FC = () => {
 };
 
 export default CampaignViewPage;
+
