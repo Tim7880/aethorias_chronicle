@@ -12,7 +12,7 @@ from app.models.item import Item
 from app.models.character_item import CharacterItem
 from app.models.spell import Spell
 from app.models.character_spell import CharacterSpell # <--- ADD THIS IMPORT
-
+from app.models.monster import Monster
 # Import other models here as you create them
 # Import other models here as you create them
 

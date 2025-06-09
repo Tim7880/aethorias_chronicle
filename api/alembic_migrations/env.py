@@ -32,7 +32,7 @@ from app.models.item import Item  # <--- ADDED IMPORT
 from app.models.character_item import CharacterItem 
 from app.models.spell import Spell
 from app.models.character_spell import CharacterSpell
-
+from app.models.monster import Monster
 target_metadata = AppBase.metadata
 # --- End Aethoria's Chronicle Specific ---
 
