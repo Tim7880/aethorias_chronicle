@@ -16,6 +16,8 @@ import CreateCampaignPage from './pages/CreateCampaignPage';
 import DiscoverCampaignsPage from './pages/DiscoverCampaignsPage';
 import CampaignManagementPage from './pages/CampaignManagementPage';
 import CampaignViewPage from './pages/CampaignViewPage';
+import ClassesViewPage from './pages/ClassesViewPage';
+import CompendiumPage from './pages/CompendiumPage'; // <--- NEW IMPORT
 import { useAuth } from './contexts/AuthContext';
 import './App.css'; 
 
@@ -54,11 +56,7 @@ const PublicLayout: React.FC = () => {
 const AuthenticatedLayout: React.FC = () => {
   const auth = useAuth(); 
   const location = useLocation();
-
-  const handleLogout = () => {
-    // The logout function in AuthContext will now handle state clearing and redirection.
-    auth.logout();
-  };
+  const handleLogout = () => { auth.logout(); };
 
   return (
     <div>
@@ -71,6 +69,12 @@ const AuthenticatedLayout: React.FC = () => {
                 <li><NavLink to="/dashboard" style={navLinkStyle}>Dashboard</NavLink></li>
             )}
             <li><NavLink to="/discover-campaigns" style={navLinkStyle}>Discover</NavLink></li>
+            <li>
+              {/* --- MODIFICATION: Link now points to the main compendium page --- */}
+              <NavLink to="/compendium" style={navLinkStyle}>
+                Compendium
+              </NavLink>
+            </li>
           </div>
           <div className="nav-section">
             {auth.isAuthenticated && auth.user && (
@@ -104,6 +108,15 @@ function App() {
           <Route element={<AuthenticatedLayout />}> 
             <Route path="/dashboard" element={<DashboardPage />} /> 
             <Route path="/create-character" element={<CreateCharacterPage />} />
+            <Route path="/create-campaign" element={<CreateCampaignPage />} />
+            
+            {/* --- MODIFICATION: Nested Compendium Routes --- */}
+            <Route path="/compendium" element={<CompendiumPage />}>
+              <Route path="classes" element={<ClassesViewPage />} />
+              {/* Future routes like <Route path="races" element={<RacesPage />} /> go here */}
+            </Route>
+            {/* --- END MODIFICATION --- */}
+
             <Route path="/character/:characterId/level-up/hp" element={<LevelUpHPPage />} />
             <Route path="/character/:characterId/level-up/asi" element={<LevelUpASIPage />} /> 
             <Route path="/character/:characterId/level-up/expertise" element={<LevelUpExpertisePage />} />
@@ -112,7 +125,6 @@ function App() {
             <Route path="/discover-campaigns" element={<DiscoverCampaignsPage />} />
             <Route path="/campaigns/:campaignId/manage" element={<CampaignManagementPage />} />
             <Route path="/campaigns/:campaignId/play" element={<CampaignViewPage />} />
-            <Route path="/create-campaign" element={<CreateCampaignPage />} />
           </Route>
         </Route>
         <Route path="*" element={

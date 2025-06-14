@@ -12,7 +12,7 @@ const featureNews = [
     { id: 2, title: "Now Available: Campaign Join Requests", date: "June 5, 2025", snippet: "Players can now discover open campaigns and send join requests directly to the Dungeon Master." },
 ];
 const resourceLinks = [
-    { id: 1, name: "5th Edition SRD", url: "#" },
+    { id: 1, name: "5th Edition SRD", url: "https://www.5esrd.com/" },
     { id: 2, name: "Online Dice Roller", url: "https://www.dnddiceroller.com/" },
     { id: 3, name: "Character Name Generator", url: "https://www.fantasynamegenerators.com/" },
 ]

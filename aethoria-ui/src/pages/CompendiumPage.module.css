@@ -1,0 +1,79 @@
+/* Path: src/pages/CompendiumPage.module.css */
+
+.pageContainer {
+    padding: 20px;
+    font-family: var(--font-body-primary);
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.title {
+    font-family: var(--font-heading-ornate);
+    font-size: 2.8em;
+    color: var(--ink-color-dark);
+}
+
+.layout {
+    display: grid;
+    grid-template-columns: 200px 1fr; /* Sidebar of 200px, main content takes the rest */
+    gap: 2rem;
+}
+
+/* On smaller screens, stack the layout */
+@media (max-width: 768px) {
+    .layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+.sidebar {
+    background-color: var(--parchment-bg);
+    border: 1px solid var(--ink-color-light);
+    border-radius: 6px;
+    padding: 20px;
+}
+
+.sidebarTitle {
+    font-family: var(--font-script-annotation);
+    font-size: 1.5em;
+    color: var(--ink-color-dark);
+    margin: 0 0 1em 0;
+    padding-bottom: 0.5em;
+    border-bottom: 1px dashed var(--ink-color-medium);
+}
+
+.sidebarNav {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sidebarNav li {
+    margin-bottom: 0.5rem;
+}
+
+.sidebarLink {
+    display: block;
+    padding: 8px 12px;
+    border-radius: 4px;
+    text-decoration: none;
+    color: var(--ink-color-medium);
+    font-weight: bold;
+    transition: background-color 0.2s;
+}
+
+.sidebarLink:hover {
+    background-color: var(--parchment-highlight);
+    color: var(--ink-color-dark);
+}
+
+.sidebarLink.active {
+    background-color: var(--ink-color-light);
+    color: var(--ink-color-dark);
+}
+
+
+

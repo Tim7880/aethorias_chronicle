@@ -1,7 +1,7 @@
+from typing import AsyncGenerator
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker, declarative_base
 from app.core.config import settings # Import settings from our config file
-from typing import AsyncGenerator
 
 # Create the SQLAlchemy async engine
 # For async, we use 'postgresql+asyncpg://...'
@@ -13,8 +13,8 @@ engine = create_async_engine(
 # Create a sessionmaker to generate AsyncSession instances
 # expire_on_commit=False is often recommended for FastAPI background tasks
 AsyncSessionLocal = sessionmaker(
-    bind=engine, 
-    class_=AsyncSession, 
+    bind=engine,
+    class_=AsyncSession,
     expire_on_commit=False
 )
 
@@ -34,7 +34,8 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]: # <--- MODIFIED RETURN
         except Exception as e:
             # If you want to specifically handle rollback here, you can,
             # but often it's handled at a higher level or by FastAPI's error handling.
-            # await session.rollback() # Optional: if you want explicit rollback on error during session use
+            # await session.rollback() # Optional
             raise e # Re-raise the exception
         finally:
             await session.close()
+            

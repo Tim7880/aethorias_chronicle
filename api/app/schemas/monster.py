@@ -42,3 +42,39 @@ class Monster(MonsterBase):
     class Config:
         from_attributes = True
 
+# --- NEW: Public-facing Monster Schema ---
+# This schema omits sensitive DM-only information
+class MonsterPublic(BaseModel):
+    id: int
+    name: str
+    size: str
+    creature_type: str
+    alignment: str
+    armor_class: int
+    hit_dice: str # Show the dice, but not the calculated total HP
+    speed: Dict[str, Any]
+    
+    strength: int
+    dexterity: int
+    constitution: int
+    intelligence: int
+    wisdom: int
+    charisma: int
+
+    proficiencies: Optional[List[Dict[str, Any]]] = None
+    damage_vulnerabilities: Optional[List[str]] = None
+    damage_resistances: Optional[List[str]] = None
+    damage_immunities: Optional[List[str]] = None
+    condition_immunities: Optional[List[str]] = None
+    senses: Dict[str, Any]
+    languages: str
+
+    special_abilities: Optional[List[Dict[str, Any]]] = None
+    actions: Optional[List[Dict[str, Any]]] = None
+    legendary_actions: Optional[List[Dict[str, Any]]] = None
+    
+    class Config:
+        from_attributes = True
+# --- END NEW ---
+
+

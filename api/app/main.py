@@ -6,8 +6,10 @@ from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.db.database import engine, AsyncSessionLocal 
 from app.db import base 
-from app.db.init_db import seed_skills, seed_items, seed_spells
-    
+# --- MODIFICATION: Import the new seeder function ---
+from app.db.init_db import seed_skills, seed_items, seed_spells, seed_monsters, seed_dnd_classes
+
+# Import all routers
 from app.routers import users as user_router 
 from app.routers import auth as auth_router
 from app.routers import characters as character_router
@@ -16,7 +18,9 @@ from app.routers import campaign_members as campaign_member_router
 from app.routers import skills as skill_router
 from app.routers import items as item_router
 from app.routers import spells as spell_router
-from app.routers import admin as admin_router # <--- IMPORT THE NEW ADMIN ROUTER
+from app.routers import monsters as monster_router
+from app.routers import dnd_classes as dnd_class_router # <--- NEW ROUTER IMPORT
+from app.routers import admin as admin_router
 
 
 @asynccontextmanager
@@ -30,13 +34,14 @@ async def lifespan(app: FastAPI):
     print("Application startup: Seeding initial data...")
     async with AsyncSessionLocal() as db_session:
         await seed_skills(db_session)
-        await db_session.commit()
-
+        # The commit is handled within each seeder function now, so not needed here
         await seed_items(db_session)
-        await db_session.commit()
-
         await seed_spells(db_session)
-        await db_session.commit()
+        # --- MODIFICATION: Add the call to seed monsters ---
+        await seed_monsters(db_session) 
+        await seed_dnd_classes(db_session)
+        # --- END MODIFICATION ---
+
     print("Application startup complete.")
     
     yield
@@ -50,40 +55,29 @@ app = FastAPI(
 )
 
 # --- ADD CORS MIDDLEWARE ---
-# List of origins that are allowed to make requests.
-# For development, this will be your Vite frontend development server.
 origins = [
-    "http://localhost:5173", # Your Vite frontend
-    "http://127.0.0.1:5173", # Also add this for consistency
-    # Add any other origins you might use (e.g., deployed frontend URL later)
+    "http://localhost:5173", 
+    "http://127.0.0.1:5173", 
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins, # Allows specific origins
-    allow_credentials=True, # Allows cookies to be included in requests (not strictly needed for JWT in headers but good practice)
-    allow_methods=["*"],    # Allows all methods (GET, POST, PUT, DELETE, etc.)
-    allow_headers=["*"],    # Allows all headers
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-# Include routers
+# --- Include routers ---
 app.include_router(auth_router.router, prefix=settings.API_V1_STR)
-app.include_router(user_router.router, prefix=settings.API_V1_STR) 
+app.include_router(user_router.router, prefix=settings.API_V1_STR)
 app.include_router(character_router.router, prefix=settings.API_V1_STR)
 app.include_router(campaign_router.router, prefix=settings.API_V1_STR)
 app.include_router(skill_router.router, prefix=settings.API_V1_STR)
 app.include_router(item_router.router, prefix=settings.API_V1_STR)
 app.include_router(spell_router.router, prefix=settings.API_V1_STR)
 app.include_router(campaign_member_router.router, prefix=settings.API_V1_STR)
-app.include_router(admin_router.router, prefix=settings.API_V1_STR) # <--- INCLUDE THE ADMIN ROUTER
-
-@app.get("/")
-async def read_root():
-    return {"message": f"Welcome to the Scriptorium of {settings.PROJECT_NAME}!"}
-
-@app.get("/health")
-async def health_check():
-    return {"status": "API is healthy and running"}
-
-
+app.include_router(admin_router.router, prefix=settings.API_V1_STR)
+app.include_router(dnd_class_router.router, prefix=settings.API_V1_STR) 
+app.include_router(monster_router.router, prefix=settings.API_V1_STR) 
 

@@ -13,6 +13,7 @@ from app.models.character_item import CharacterItem
 from app.models.spell import Spell
 from app.models.character_spell import CharacterSpell # <--- ADD THIS IMPORT
 from app.models.monster import Monster
+from app.models.dnd_class import DndClass, ClassLevel
 # Import other models here as you create them
 # Import other models here as you create them
 
