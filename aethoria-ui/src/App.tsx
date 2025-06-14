@@ -17,7 +17,14 @@ import DiscoverCampaignsPage from './pages/DiscoverCampaignsPage';
 import CampaignManagementPage from './pages/CampaignManagementPage';
 import CampaignViewPage from './pages/CampaignViewPage';
 import ClassesViewPage from './pages/ClassesViewPage';
-import CompendiumPage from './pages/CompendiumPage'; // <--- NEW IMPORT
+import CompendiumPage from './pages/CompendiumPage';
+import RacesViewPage from './pages/RacesViewPage';
+// --- NEW IMPORTS ---
+import MonstersViewPage from './pages/MonstersViewPage';
+import SpellsViewPage from './pages/SpellsViewPage';
+import ItemsViewPage from './pages/ItemsViewPage';
+import BackgroundsViewPage from './pages/BackgroundsViewPage';
+// --- END NEW IMPORTS ---
 import { useAuth } from './contexts/AuthContext';
 import './App.css'; 
 
@@ -110,12 +117,16 @@ function App() {
             <Route path="/create-character" element={<CreateCharacterPage />} />
             <Route path="/create-campaign" element={<CreateCampaignPage />} />
             
-            {/* --- MODIFICATION: Nested Compendium Routes --- */}
             <Route path="/compendium" element={<CompendiumPage />}>
               <Route path="classes" element={<ClassesViewPage />} />
-              {/* Future routes like <Route path="races" element={<RacesPage />} /> go here */}
+              <Route path="races" element={<RacesViewPage />} />
+              {/* --- NEW ROUTES for Compendium --- */}
+              <Route path="monsters" element={<MonstersViewPage />} />
+              <Route path="spells" element={<SpellsViewPage />} />
+              <Route path="items" element={<ItemsViewPage />} />
+              <Route path="backgrounds" element={<BackgroundsViewPage />} />
+              {/* --- END NEW ROUTES --- */}
             </Route>
-            {/* --- END MODIFICATION --- */}
 
             <Route path="/character/:characterId/level-up/hp" element={<LevelUpHPPage />} />
             <Route path="/character/:characterId/level-up/asi" element={<LevelUpASIPage />} /> 

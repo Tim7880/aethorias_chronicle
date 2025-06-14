@@ -1,0 +1,107 @@
+/* Path: src/pages/MonstersViewPage.module.css */
+
+.pageContainer {
+    padding: 20px;
+    max-width: 900px;
+    margin: 20px auto;
+    font-family: var(--font-body-primary);
+}
+
+.selectorContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+}
+
+.selectorLabel {
+    font-family: var(--font-script-annotation);
+    font-size: 1.5em;
+    color: var(--ink-color-medium);
+}
+
+.monsterSelector {
+    font-family: var(--font-body-primary);
+    font-size: 1.2em;
+    padding: 8px 12px;
+    min-width: 250px;
+    border: 1px solid var(--ink-color-light);
+    border-radius: 4px;
+    background-color: #fff;
+    cursor: pointer;
+}
+
+.monsterDisplay {
+    background-color: var(--parchment-highlight);
+    border: 1px solid var(--ink-color-light);
+    border-radius: 6px;
+    padding: 30px;
+    box-shadow: 0px 3px 10px rgba(0,0,0,0.05);
+    min-height: 400px;
+    text-align: left;
+}
+
+.monsterName {
+    font-family: var(--font-heading-ornate);
+    font-size: 2.5em;
+    color: var(--ink-color-dark);
+    margin: 0;
+}
+
+.monsterMeta {
+    font-style: italic;
+    color: var(--ink-color-medium);
+    margin: 0 0 1em 0;
+}
+
+.statBlock {
+    border-top: 2px solid var(--ink-color-dark);
+    border-bottom: 2px solid var(--ink-color-dark);
+    padding: 10px 0;
+    margin-bottom: 1em;
+}
+
+.statGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+    text-align: center;
+}
+
+.stat {
+    display: flex;
+    flex-direction: column;
+}
+
+.statValue {
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+.section {
+    margin-top: 1.5em;
+}
+
+.abilityBlock {
+    margin-bottom: 1em;
+}
+
+.abilityName {
+    font-weight: bold;
+    font-style: italic;
+    color: var(--ink-color-dark);
+}
+
+.promptText {
+    font-size: 1.2em;
+    color: var(--ink-color-medium);
+    text-align: center;
+    padding-top: 50px;
+}
+
+.errorText { 
+    color: #a02c2c; 
+    text-align: center;
+    font-weight: bold;
+}

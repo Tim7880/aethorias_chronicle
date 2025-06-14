@@ -1,0 +1,118 @@
+/* Path: src/pages/RacesViewPage.module.css */
+
+.pageContainer {
+    padding: 20px;
+    max-width: 900px;
+    margin: 20px auto;
+    font-family: var(--font-body-primary);
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.title {
+    font-family: var(--font-heading-ornate);
+    font-size: 2.8em;
+    color: var(--ink-color-dark);
+}
+
+.selectorContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+}
+
+.selectorLabel {
+    font-family: var(--font-script-annotation);
+    font-size: 1.5em;
+    color: var(--ink-color-medium);
+}
+
+.raceSelector {
+    font-family: var(--font-body-primary);
+    font-size: 1.2em;
+    padding: 8px 12px;
+    min-width: 250px;
+    border: 1px solid var(--ink-color-light);
+    border-radius: 4px;
+    background-color: #fff;
+    cursor: pointer;
+}
+
+.raceDisplay {
+    background-color: var(--parchment-highlight);
+    border: 1px solid var(--ink-color-light);
+    border-radius: 6px;
+    padding: 30px;
+    box-shadow: 0px 3px 10px rgba(0,0,0,0.05);
+    min-height: 300px;
+    text-align: left;
+}
+
+.raceName {
+    font-family: var(--font-heading-ornate);
+    font-size: 2.5em;
+    color: var(--ink-color-dark);
+    margin: 0 0 0.5em 0;
+    border-bottom: 1px solid var(--ink-color-light);
+    padding-bottom: 0.3em;
+}
+
+.raceDescription {
+    font-size: 1.1em;
+    line-height: 1.7;
+    margin-bottom: 1.5em;
+    white-space: pre-wrap;
+}
+
+.raceDetailsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 1.5em;
+}
+
+.detailItem {
+    font-size: 1.1em;
+}
+
+.traitsList {
+    list-style: none;
+    padding: 0;
+    margin-top: 1em;
+}
+
+.traitItem {
+    margin-bottom: 1em;
+}
+
+.traitName {
+    font-family: var(--font-script-annotation);
+    font-weight: bold;
+    font-size: 1.2em;
+    color: var(--ink-color-dark);
+}
+
+.traitDesc {
+    font-size: 1em;
+    line-height: 1.6;
+    padding-left: 1em;
+    border-left: 2px solid var(--ink-color-light);
+}
+
+.promptText {
+    font-size: 1.2em;
+    color: var(--ink-color-medium);
+    text-align: center;
+    padding-top: 50px;
+}
+
+.errorText { 
+    color: #a02c2c; 
+    text-align: center;
+    font-weight: bold;
+}

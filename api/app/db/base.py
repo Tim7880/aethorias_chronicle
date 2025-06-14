@@ -11,15 +11,10 @@ from app.models.character_skill import CharacterSkill
 from app.models.item import Item
 from app.models.character_item import CharacterItem
 from app.models.spell import Spell
-from app.models.character_spell import CharacterSpell # <--- ADD THIS IMPORT
+from app.models.character_spell import CharacterSpell
 from app.models.monster import Monster
 from app.models.dnd_class import DndClass, ClassLevel
-# Import other models here as you create them
-# Import other models here as you create them
+from app.models.race import Race 
+from app.models.background import Background
 
-
-
-
-# Import other models here as you create them
-# from app.models.character import Character
-# from app.models.campaign import Campaign
+target_metadata = Base.metadata

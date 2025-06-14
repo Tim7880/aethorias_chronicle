@@ -39,6 +39,14 @@ const CompendiumPage: React.FC = () => {
                   Races
                 </NavLink>
               </li>
+              <li><NavLink 
+                    to="/compendium/backgrounds" 
+                    className={styles.sidebarLink} 
+                    style={({ isActive }) => isActive ? activeLinkStyle : {}}
+                >
+                  Backgrounds
+                  </NavLink>
+              </li>
               <li>
                 <NavLink 
                   to="/compendium/monsters" 
