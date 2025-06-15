@@ -20,7 +20,7 @@ router = APIRouter(
 @router.get("/", response_model=List[ItemSchema])
 async def read_items(
     skip: int = 0,
-    limit: int = 100, # Default to fetching up to 100 items
+    limit: int = 1000, # Default to fetching up to 100 items
     db: AsyncSession = Depends(get_db)
 ):
     """

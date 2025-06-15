@@ -10,3 +10,34 @@
 .spellDetail { margin-bottom: 0.5em; }
 .promptText { font-size: 1.2em; color: var(--ink-color-medium); text-align: center; padding-top: 50px; }
 .errorText { color: #a02c2c; text-align: center; font-weight: bold; }
+.filterContainer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
+.filterGroup {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.filterInput {
+    font-size: 1.2em;
+    padding: 8px 12px;
+    min-width: 250px;
+    border: 1px solid var(--ink-color-light);
+    border-radius: 4px;
+    background-color: #fff;
+}
+
+.spellClasses {
+    font-size: 0.9em;
+    color: var(--ink-color-medium);
+    font-style: italic;
+    margin-top: 1em;
+}

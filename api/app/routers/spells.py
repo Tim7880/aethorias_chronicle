@@ -19,7 +19,7 @@ router = APIRouter(
 @router.get("/", response_model=List[SpellSchema])
 async def read_spells_list(
     skip: int = 0,
-    limit: int = 100, # Default to fetching up to 100 spells
+     # Default to fetching up to 100 spells
     db: AsyncSession = Depends(get_db)
     # current_user: UserModel = Depends(get_current_active_user) # Already in router dependencies
     ):
@@ -27,7 +27,7 @@ async def read_spells_list(
     Retrieve a list of all predefined D&D spells available in the system.
     Spells are ordered by level, then by name.
     """
-    spells = await crud_spell.get_spells(db=db, skip=skip, limit=limit)
+    spells = await crud_spell.get_spells(db=db, skip=skip, limit=1000)
     return spells
 
 @router.get("/{spell_id}", response_model=SpellSchema)
