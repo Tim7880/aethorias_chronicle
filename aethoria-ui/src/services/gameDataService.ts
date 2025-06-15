@@ -5,7 +5,7 @@ import type { Monster } from '../types/monster';
 import type { SpellDefinition } from '../types/spell';
 import type { ItemDefinition } from '../types/item';
 import type { Background } from '../types/background';
-
+import type { Condition } from '../types/condition';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
 
@@ -99,6 +99,20 @@ export const gameDataService = {
       throw new Error(`Failed to fetch D&D backgrounds (status: ${response.status})`);
     }
     return response.json() as Promise<Background[]>;
+  },
+  getConditions: async (token: string): Promise<Condition[]> => {
+    const response = await fetch(`${API_BASE_URL}/conditions/`, {
+      method: 'GET',
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+    });
+    if (!response.ok) {
+      if (response.status === 401) { throw new Error('Unauthorized: Session may have expired.'); }
+      throw new Error(`Failed to fetch conditions (status: ${response.status})`);
+    }
+    return response.json() as Promise<Condition[]>;
   },
 };
 

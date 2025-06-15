@@ -116,3 +116,27 @@
     text-align: center;
     font-weight: bold;
 }
+
+.subraceContainer {
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 2px double var(--ink-color-light);
+}
+
+.subraceBox {
+    margin-bottom: 1.5rem;
+}
+
+.subraceTitle {
+    font-family: var(--font-heading-ornate);
+    font-size: 1.8em;
+    color: var(--ink-color-dark);
+    margin-bottom: 0.5rem;
+}
+
+.subraceASI {
+    font-weight: bold;
+    font-style: italic;
+    color: var(--ink-color-medium);
+    margin-bottom: 1rem;
+}

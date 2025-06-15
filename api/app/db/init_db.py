@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 # Import CRUD modules
-from app.crud import crud_skill, crud_item, crud_spell, crud_monster, crud_dnd_class, crud_race, crud_background
+from app.crud import crud_skill, crud_item, crud_spell, crud_monster, crud_dnd_class, crud_race, crud_background, crud_condition
 
 
 # Import models
@@ -14,6 +14,7 @@ from app.models.monster import Monster as MonsterModel
 from app.models.dnd_class import DndClass as DndClassModel
 from app.models.race import Race as RaceModel
 from app.models.background import Background as BackgroundModel
+from app.models.condition import Condition as ConditionModel
 
 # Import schemas
 from app.schemas.skill import SkillCreate
@@ -23,6 +24,7 @@ from app.schemas.monster import MonsterCreate
 from app.schemas.dnd_class import DndClassCreate
 from app.schemas.race import RaceCreate
 from app.schemas.background import BackgroundCreate
+from app.schemas.condition import ConditionCreate
 
 # --- Import data from separate files ---
 from app.game_data.skills_data import PREDEFINED_SKILLS
@@ -32,6 +34,8 @@ from app.game_data.monsters_data import PREDEFINED_MONSTERS
 from app.game_data.classes_data import PREDEFINED_CLASSES_DATA
 from app.game_data.races_data import PREDEFINED_RACES 
 from app.game_data.backgrounds_data import PREDEFINED_BACKGROUNDS
+from app.game_data.conditions_data import PREDEFINED_CONDITIONS
+
 
 async def seed_skills(db: AsyncSession) -> None:
     print("Attempting to seed skills...")
@@ -104,6 +108,15 @@ async def seed_backgrounds(db: AsyncSession) -> None:
             print(f"Adding background: {background_data['name']}")
     print("Background seeding process complete.")
 
+async def seed_conditions(db: AsyncSession) -> None:
+    print("Attempting to seed conditions...")
+    for data in PREDEFINED_CONDITIONS:
+        existing = await crud_condition.get_condition_by_name(db=db, name=data["name"])
+        if not existing:
+            await crud_condition.create_condition(db=db, condition_in=ConditionCreate(**data))
+            print(f"Adding condition: {data['name']}")
+    print("Condition seeding process complete.")
+
 async def init_db(db: AsyncSession) -> None:
     print("Application startup: Seeding initial data...")
     await seed_skills(db)
@@ -112,6 +125,7 @@ async def init_db(db: AsyncSession) -> None:
     await seed_monsters(db)
     await seed_dnd_classes(db)
     await seed_races(db)
-    await seed_backgrounds(db) 
+    await seed_backgrounds(db)
+    await seed_conditions(db)
     print("Initial data seeding complete.")
 

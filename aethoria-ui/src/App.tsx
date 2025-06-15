@@ -24,6 +24,7 @@ import MonstersViewPage from './pages/MonstersViewPage';
 import SpellsViewPage from './pages/SpellsViewPage';
 import ItemsViewPage from './pages/ItemsViewPage';
 import BackgroundsViewPage from './pages/BackgroundsViewPage';
+import ConditionsViewPage from './pages/ConditionsViewPage';
 // --- END NEW IMPORTS ---
 import { useAuth } from './contexts/AuthContext';
 import './App.css'; 
@@ -125,6 +126,7 @@ function App() {
               <Route path="spells" element={<SpellsViewPage />} />
               <Route path="items" element={<ItemsViewPage />} />
               <Route path="backgrounds" element={<BackgroundsViewPage />} />
+              <Route path="conditions" element={<ConditionsViewPage />} />
               {/* --- END NEW ROUTES --- */}
             </Route>
 

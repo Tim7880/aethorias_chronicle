@@ -23,20 +23,20 @@ const CompendiumPage: React.FC = () => {
             <ul className={styles.sidebarNav}>
               <li>
                 <NavLink 
-                  to="/compendium/classes" 
-                  className={styles.sidebarLink}
-                  style={({ isActive }) => isActive ? activeLinkStyle : {}}
-                >
-                  Classes
-                </NavLink>
-              </li>
-              <li>
-                <NavLink 
                   to="/compendium/races" 
                   className={styles.sidebarLink}
                   style={({ isActive }) => isActive ? activeLinkStyle : {}}
                 >
                   Races
+                </NavLink>
+              </li>
+              <li>
+                <NavLink 
+                  to="/compendium/classes" 
+                  className={styles.sidebarLink}
+                  style={({ isActive }) => isActive ? activeLinkStyle : {}}
+                >
+                  Classes
                 </NavLink>
               </li>
               <li><NavLink 
@@ -45,6 +45,14 @@ const CompendiumPage: React.FC = () => {
                     style={({ isActive }) => isActive ? activeLinkStyle : {}}
                 >
                   Backgrounds
+                  </NavLink>
+              </li>
+               <li><NavLink 
+                    to="/compendium/conditions" 
+                    className={styles.sidebarLink} 
+                    style={({ isActive }) => isActive ? activeLinkStyle : {}}
+                >
+                  Conditions
                   </NavLink>
               </li>
               <li>

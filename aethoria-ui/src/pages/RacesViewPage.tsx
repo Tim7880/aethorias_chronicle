@@ -19,7 +19,7 @@ const RacesViewPage: React.FC = () => {
         setError(null);
         try {
           const raceData = await gameDataService.getRaces(auth.token);
-          setRaces(raceData);
+          setRaces(raceData.sort((a, b) => a.name.localeCompare(b.name)));
         } catch (err: any) {
           setError(err.message || "Failed to load race data.");
         } finally {
@@ -38,7 +38,7 @@ const RacesViewPage: React.FC = () => {
 
   const formatAbilityScores = (scores: { [key: string]: number }) => {
     return Object.entries(scores)
-      .map(([ability, value]) => `${ability.toUpperCase()} +${value}`)
+      .map(([ability, value]) => `${ability.charAt(0).toUpperCase() + ability.slice(1)} +${value}`)
       .join(', ');
   };
 
@@ -99,6 +99,27 @@ const RacesViewPage: React.FC = () => {
                     </ul>
                 </div>
             )}
+
+            {/* --- NEW: Subrace Display Section --- */}
+            {selectedRace.subraces && selectedRace.subraces.length > 0 && (
+                <div className={styles.subraceContainer}>
+                    <h3 style={{fontFamily: 'var(--font-heading-ornate)'}}>Subraces</h3>
+                    {selectedRace.subraces.map(subrace => (
+                        <div key={subrace.name} className={styles.subraceBox}>
+                            <h4 className={styles.subraceTitle}>{subrace.name}</h4>
+                            <p className={styles.subraceASI}><strong>Ability Score Increase:</strong> {formatAbilityScores(subrace.ability_score_increase)}</p>
+                            {subrace.racial_traits && subrace.racial_traits.map(trait => (
+                                <div key={trait.name} className={styles.traitItem}>
+                                    <div className={styles.traitName}>{trait.name}</div>
+                                    <p className={styles.traitDesc}>{trait.desc}</p>
+                                </div>
+                            ))}
+                        </div>
+                    ))}
+                </div>
+            )}
+            {/* --- END NEW --- */}
+
           </div>
         ) : (
           <p className={styles.promptText}>Select a race from the dropdown to see its details.</p>
@@ -109,4 +130,5 @@ const RacesViewPage: React.FC = () => {
 };
 
 export default RacesViewPage;
+
 

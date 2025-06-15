@@ -16,5 +16,6 @@ from app.models.monster import Monster
 from app.models.dnd_class import DndClass, ClassLevel
 from app.models.race import Race 
 from app.models.background import Background
+from app.models.condition import Condition
 
 target_metadata = Base.metadata

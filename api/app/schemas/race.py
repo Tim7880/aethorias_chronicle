@@ -10,7 +10,7 @@ class RaceBase(BaseModel):
     speed: int
     racial_traits: Optional[List[Dict[str, Any]]] = None
     languages: Optional[str] = None
-
+    subraces: Optional[List[Dict[str, Any]]] = None
 class RaceCreate(RaceBase):
     pass
 

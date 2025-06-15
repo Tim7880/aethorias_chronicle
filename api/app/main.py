@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.db.database import engine, AsyncSessionLocal 
 from app.db import base 
-from app.db.init_db import seed_skills, seed_items, seed_spells, seed_monsters, seed_dnd_classes, seed_races, seed_backgrounds
+from app.db.init_db import seed_skills, seed_items, seed_spells, seed_monsters, seed_dnd_classes, seed_races, seed_backgrounds, seed_conditions
 
 
 # Import all routers
@@ -22,6 +22,7 @@ from app.routers import monsters as monster_router
 from app.routers import dnd_classes as dnd_class_router
 from app.routers import races as race_router
 from app.routers import backgrounds as background_router
+from app.routers import conditions as condition_router
 from app.routers import admin as admin_router
 
 
@@ -39,7 +40,8 @@ async def lifespan(app: FastAPI):
         await seed_monsters(db_session)
         await seed_dnd_classes(db_session)
         await seed_races(db_session)
-        await seed_backgrounds(db_session) # <--- ADDED call to seed races
+        await seed_backgrounds(db_session)
+        await seed_conditions(db_session) # <--- ADDED call to seed races
 
     print("Application startup complete.")
     
@@ -80,6 +82,7 @@ app.include_router(monster_router.router, prefix=settings.API_V1_STR)
 app.include_router(dnd_class_router.router, prefix=settings.API_V1_STR)
 app.include_router(race_router.router, prefix=settings.API_V1_STR)
 app.include_router(background_router.router, prefix=settings.API_V1_STR)
+app.include_router(condition_router.router, prefix=settings.API_V1_STR)
 app.include_router(admin_router.router, prefix=settings.API_V1_STR)
 
 @app.get("/")

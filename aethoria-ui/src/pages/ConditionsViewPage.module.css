@@ -1,0 +1,10 @@
+/* Path: src/pages/ConditionsViewPage.module.css */
+.pageContainer { max-width: 900px; margin: 0 auto; }
+.selectorContainer { text-align: center; margin-bottom: 2rem; }
+.selectorLabel { font-family: var(--font-script-annotation); font-size: 1.5em; color: var(--ink-color-medium); }
+.conditionSelector { font-size: 1.2em; padding: 8px; min-width: 250px; border-radius: 4px; }
+.conditionDisplay { background-color: var(--parchment-highlight); border: 1px solid var(--ink-color-light); border-radius: 6px; padding: 30px; min-height: 300px; text-align: left; }
+.conditionName { font-family: var(--font-heading-ornate); font-size: 2.5em; color: var(--ink-color-dark); margin: 0 0 0.5em 0; border-bottom: 1px solid var(--ink-color-light); padding-bottom: 0.3em; }
+.conditionDescription { font-size: 1.1em; line-height: 1.7; white-space: pre-wrap; }
+.promptText { font-size: 1.2em; color: var(--ink-color-medium); text-align: center; padding-top: 50px; }
+.errorText { color: #a02c2c; text-align: center; font-weight: bold; }
