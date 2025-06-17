@@ -50,6 +50,7 @@ class Character(Base):
     death_save_successes = Column(Integer, default=0, nullable=False, server_default=sa.text('0'))
     death_save_failures = Column(Integer, default=0, nullable=False, server_default=sa.text('0'))
     level_up_status = Column(String(50), nullable=True, default=None)
+    completed_level_up_choices = Column(JSON, nullable=True, server_default='[]')
 
     # --- EXPANDED CURRENCY FIELDS ---
     currency_pp = Column(Integer, default=0, nullable=False, server_default=sa.text('0')) # Platinum Pieces

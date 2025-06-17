@@ -6,7 +6,7 @@ from typing import List, Optional
 from app.models.spell import Spell as SpellModel
 # from app.schemas.spell import SpellCreate as SpellCreateSchema # For if we allowed API creation
 
-async def get_spells(db: AsyncSession, skip: int = 0, limit: int = 100) -> List[SpellModel]:
+async def get_spells(db: AsyncSession, skip: int = 0, limit: int = 1000) -> List[SpellModel]:
     """
     Retrieve a list of all predefined spells, with pagination.
     Orders by spell level, then by name.

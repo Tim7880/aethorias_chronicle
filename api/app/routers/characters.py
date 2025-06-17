@@ -10,9 +10,9 @@ from app.schemas.character import (
     CharacterHPLevelUpRequest, CharacterHPLevelUpResponse,
     SpendHitDieRequest, RecordDeathSaveRequest,
     ASISelectionRequest,
-    SorcererSpellSelectionRequest,
+    SorcererSpellSelectionRequest as SpellSelectionRequest, # Renamed for generic use
     ExpertiseSelectionRequest,
-    RogueArchetypeSelectionRequest # <--- IMPORT NEW EXPERTISE SCHEMA
+    RogueArchetypeSelectionRequest
 )
 from app.schemas.skill import CharacterSkill as CharacterSkillSchema
 from app.schemas.skill import CharacterSkillCreate
@@ -91,14 +91,7 @@ async def update_existing_character_endpoint(
        character_update_payload.is_ascended_tier != db_character.is_ascended_tier:
         if not current_user.is_superuser:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only a superuser can change the ascended tier status.")
-    current_character_data = CharacterSchema.model_validate(db_character).model_dump()
-    update_data_dict = character_update_payload.model_dump(exclude_unset=True)
-    final_state_data = current_character_data.copy()
-    final_state_data.update(update_data_dict)
-    try:
-        CharacterBase(**final_state_data) 
-    except ValueError as e: 
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(e))
+    
     updated_character_orm = await crud_character.update_character(
         db=db, character=db_character, character_in=character_update_payload
     )
@@ -127,7 +120,7 @@ async def assign_skill_to_character_endpoint(
     db_character = await crud_character.get_character(db=db, character_id=character_id)
     if not db_character or (db_character.user_id != current_user.id and not current_user.is_superuser):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND if not db_character else status.HTTP_403_FORBIDDEN, 
-                            detail="Character not found or not authorized")
+                                detail="Character not found or not authorized")
     skill_def = await crud_skill.get_skill_by_id(db=db, skill_id=skill_in.skill_id)
     if not skill_def:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Skill with ID {skill_in.skill_id} not found.")
@@ -137,7 +130,7 @@ async def assign_skill_to_character_endpoint(
         )
         return char_skill_association
     except ValueError as e:
-         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 @router.delete("/{character_id}/skills/{skill_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def remove_skill_from_character_endpoint(
@@ -149,7 +142,7 @@ async def remove_skill_from_character_endpoint(
     db_character = await crud_character.get_character(db=db, character_id=character_id)
     if not db_character or (db_character.user_id != current_user.id and not current_user.is_superuser):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND if not db_character else status.HTTP_403_FORBIDDEN,
-                            detail="Character not found or not authorized")
+                                detail="Character not found or not authorized")
     deleted = await crud_character.remove_skill_from_character(
         db=db, character_id=character_id, skill_id=skill_id
     )
@@ -167,7 +160,7 @@ async def add_item_to_inventory(
     db_character = await crud_character.get_character(db=db, character_id=character_id)
     if not db_character or (db_character.user_id != current_user.id and not current_user.is_superuser):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND if not db_character else status.HTTP_403_FORBIDDEN,
-                            detail="Character not found or not authorized")
+                                detail="Character not found or not authorized")
     try:
         character_item = await crud_character.add_item_to_character_inventory(
             db=db, character_id=character_id, item_in=item_in
@@ -215,7 +208,7 @@ async def confirm_character_hp_on_level_up(
     db_character = await crud_character.get_character(db=db, character_id=character_id)
     if not db_character or db_character.user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND if not db_character else status.HTTP_403_FORBIDDEN,
-                            detail="Character not found or not authorized")
+                                detail="Character not found or not authorized")
     if db_character.level_up_status != "pending_hp":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Character is not pending HP confirmation. Current status: {db_character.level_up_status}")
     try:
@@ -239,8 +232,7 @@ async def select_character_asi_on_level_up(
 ):
     db_character = await crud_character.get_character(db=db, character_id=character_id)
     if not db_character or db_character.user_id != current_user.id:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND if not db_character else status.HTTP_403_FORBIDDEN,
-                            detail="Character not found or not authorized")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND if not db_character else status.HTTP_403_FORBIDDEN, detail="Character not found or not authorized")
     if db_character.level_up_status != "pending_asi":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Character is not pending ASI selection. Current status: {db_character.level_up_status}")
     try:
@@ -251,94 +243,69 @@ async def select_character_asi_on_level_up(
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
+# --- NEW: Spell Selection Endpoint for Sorcerers ---
+# --- GENERIC SPELL SELECTION ENDPOINT ---
 @router.post("/{character_id}/level-up/select-spells", response_model=CharacterSchema)
-async def select_sorcerer_spells_on_level_up( # Function name updated for clarity
+async def select_spells_on_level_up(
     character_id: int,
-    spell_selection_in: SorcererSpellSelectionRequest, # Request body
+    spell_selection_in: SpellSelectionRequest,
     db: AsyncSession = Depends(get_db),
     current_user: UserModel = Depends(get_current_active_user)
 ):
-    """
-    Allows a player to select spells for their Sorcerer character
-    when their character has a pending spell selection choice during level up.
-    """
     db_character = await crud_character.get_character(db=db, character_id=character_id)
-    if not db_character or db_character.user_id != current_user.id: # Ownership check
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND if not db_character else status.HTTP_403_FORBIDDEN,
-                            detail="Character not found or not authorized")
+    if not db_character or db_character.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND if not db_character else status.HTTP_403_FORBIDDEN, detail="Character not found or not authorized")
 
-    if not db_character.character_class or db_character.character_class.lower() != "sorcerer":
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This spell selection is for Sorcerer class characters only.")
-        
     if db_character.level_up_status != "pending_spells":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Character is not pending spell selection. Current status: {db_character.level_up_status}")
 
     try:
-        updated_character = await crud_character.apply_sorcerer_spell_selections(
+        updated_character = await crud_character.apply_spell_selections(
             db=db, character=db_character, spell_selection=spell_selection_in
         )
         return updated_character
-    except ValueError as e: # Catch validation errors from CRUD
+    except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+# --- END NEW ---
 
 @router.post("/{character_id}/level-up/select-expertise", response_model=CharacterSchema)
 async def select_rogue_expertise_on_level_up(
     character_id: int,
-    expertise_in: ExpertiseSelectionRequest, # Request body
+    expertise_in: ExpertiseSelectionRequest,
     db: AsyncSession = Depends(get_db),
     current_user: UserModel = Depends(get_current_active_user)
 ):
-    """
-    Allows a player to select skill expertise for their Rogue character
-    when their character is pending expertise selection (e.g., at level 1 or 6).
-    """
     db_character = await crud_character.get_character(db=db, character_id=character_id)
-    if not db_character or db_character.user_id != current_user.id: # Ownership check
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND if not db_character else status.HTTP_403_FORBIDDEN,
-                            detail="Character not found or not authorized")
-
-    if not db_character.character_class or db_character.character_class.lower() != "rogue":
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This expertise selection is for Rogue class characters only.")
-        
+    if not db_character or db_character.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND if not db_character else status.HTTP_403_FORBIDDEN, detail="Character not found or not authorized")
     if db_character.level_up_status != "pending_expertise":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Character is not pending expertise selection. Current status: {db_character.level_up_status}")
-
     try:
         updated_character = await crud_character.apply_rogue_expertise(
             db=db, character=db_character, expertise_selection=expertise_in
         )
         return updated_character
-    except ValueError as e: # Catch validation errors from CRUD
+    except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 @router.post("/{character_id}/level-up/select-archetype", response_model=CharacterSchema)
 async def select_rogue_archetype_on_level_up(
     character_id: int,
-    archetype_in: RogueArchetypeSelectionRequest, # Request body schema
+    archetype_in: RogueArchetypeSelectionRequest,
     db: AsyncSession = Depends(get_db),
     current_user: UserModel = Depends(get_current_active_user)
 ):
-    """
-    Allows a player to select a Roguish Archetype for their Rogue character
-    when their character is pending archetype selection (typically at level 3).
-    """
     db_character = await crud_character.get_character(db=db, character_id=character_id)
-    if not db_character or db_character.user_id != current_user.id: # Ownership check
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND if not db_character else status.HTTP_403_FORBIDDEN,
-                            detail="Character not found or not authorized")
-
-    if not db_character.character_class or db_character.character_class.lower() != "rogue":
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Archetype selection is for Rogue characters only.")
-        
+    if not db_character or db_character.user_id != current_user.id:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND if not db_character else status.HTTP_403_FORBIDDEN, detail="Character not found or not authorized")
     if db_character.level_up_status != "pending_archetype_selection":
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Character is not pending archetype selection. Current status: {db_character.level_up_status}")
-
     try:
         updated_character = await crud_character.apply_rogue_archetype_selection(
             db=db, character=db_character, archetype_selection=archetype_in
         )
         return updated_character
-    except ValueError as e: # Catch validation errors from CRUD
+    except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 @router.post("/{character_id}/spend-hit-die", response_model=CharacterSchema)
@@ -351,7 +318,7 @@ async def spend_character_hit_die_endpoint(
     db_character = await crud_character.get_character(db=db, character_id=character_id)
     if not db_character or db_character.user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND if not db_character else status.HTTP_403_FORBIDDEN,
-                            detail="Character not found or not authorized")
+                                detail="Character not found or not authorized")
     try:
         updated_character = await crud_character.spend_character_hit_die(
             db=db, character=db_character, dice_roll_result=spend_request.dice_roll_result
@@ -370,7 +337,7 @@ async def record_character_death_save(
     db_character = await crud_character.get_character(db=db, character_id=character_id)
     if not db_character or db_character.user_id != current_user.id: 
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND if not db_character else status.HTTP_403_FORBIDDEN,
-                            detail="Character not found or not authorized")
+                                detail="Character not found or not authorized")
     updated_character = await crud_character.record_death_save(
         db=db, character=db_character, success=save_request.success
     )
@@ -385,7 +352,7 @@ async def reset_character_death_saves_endpoint(
     db_character = await crud_character.get_character(db=db, character_id=character_id)
     if not db_character or db_character.user_id != current_user.id:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND if not db_character else status.HTTP_403_FORBIDDEN,
-                            detail="Character not found or not authorized")
+                                detail="Character not found or not authorized")
     updated_character = await crud_character.reset_death_saves(db=db, character=db_character)
     return updated_character
 

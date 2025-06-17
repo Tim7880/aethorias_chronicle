@@ -25,6 +25,7 @@ import SpellsViewPage from './pages/SpellsViewPage';
 import ItemsViewPage from './pages/ItemsViewPage';
 import BackgroundsViewPage from './pages/BackgroundsViewPage';
 import ConditionsViewPage from './pages/ConditionsViewPage';
+import SorcererSpellSelectionPage from './pages/SorcererSpellSelectionPage';
 // --- END NEW IMPORTS ---
 import { useAuth } from './contexts/AuthContext';
 import './App.css'; 
@@ -134,6 +135,7 @@ function App() {
             <Route path="/character/:characterId/level-up/asi" element={<LevelUpASIPage />} /> 
             <Route path="/character/:characterId/level-up/expertise" element={<LevelUpExpertisePage />} />
             <Route path="/character/:characterId/level-up/archetype" element={<LevelUpArchetypePage />} />
+            <Route path="/character/:characterId/level-up/spells" element={<SorcererSpellSelectionPage />} />
             <Route path="/characters/:characterIdFromRoute/view" element={<CharacterSheetPage />} />
             <Route path="/discover-campaigns" element={<DiscoverCampaignsPage />} />
             <Route path="/campaigns/:campaignId/manage" element={<CampaignManagementPage />} />
