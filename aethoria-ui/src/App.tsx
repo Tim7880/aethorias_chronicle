@@ -26,6 +26,7 @@ import ItemsViewPage from './pages/ItemsViewPage';
 import BackgroundsViewPage from './pages/BackgroundsViewPage';
 import ConditionsViewPage from './pages/ConditionsViewPage';
 import SorcererSpellSelectionPage from './pages/SorcererSpellSelectionPage';
+import CampaignRoomPage from './pages/CampaignRoomPage';
 // --- END NEW IMPORTS ---
 import { useAuth } from './contexts/AuthContext';
 import './App.css'; 
@@ -139,7 +140,8 @@ function App() {
             <Route path="/characters/:characterIdFromRoute/view" element={<CharacterSheetPage />} />
             <Route path="/discover-campaigns" element={<DiscoverCampaignsPage />} />
             <Route path="/campaigns/:campaignId/manage" element={<CampaignManagementPage />} />
-            <Route path="/campaigns/:campaignId/play" element={<CampaignViewPage />} />
+            <Route path="/campaigns/:campaignId/play" element={<CampaignRoomPage />} />
+            <Route path="/campaigns/:campaignId/view" element={<CampaignViewPage />} />
           </Route>
         </Route>
         <Route path="*" element={
@@ -155,3 +157,4 @@ function App() {
 }
 
 export default App;
+

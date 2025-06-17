@@ -1,0 +1,45 @@
+/* Path: src/components/game/DiceRoller.module.css */
+.diceRollerContainer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    justify-content: center;
+    padding-top: 10px;
+}
+
+.diceButton {
+    min-width: 50px;
+    padding: 8px 12px;
+}
+
+/* --- NEW STYLES for Dice Count --- */
+.countContainer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.countLabel {
+    font-family: var(--font-script-annotation);
+    font-size: 1.2em;
+    color: var(--parchment-color-light);
+}
+
+.countInput {
+    width: 60px;
+    padding: 6px;
+    border-radius: 4px;
+    border: 1px solid #2f3136;
+    background-color: #40444b;
+    color: #dcddde;
+    font-family: var(--font-body-primary);
+    font-size: 1em;
+    text-align: center;
+}
+
+.countInput:focus {
+  outline: none;
+  border-color: var(--accent-color);
+}

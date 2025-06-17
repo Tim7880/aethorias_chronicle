@@ -10,7 +10,9 @@ from app.schemas.user import User as UserSchema # Our new Token schema
 from app.crud import crud_user
 from app.core.security import create_access_token, verify_token_and_get_token_data
 from app.core.config import settings
-from app.models.user import User as UserModel # For ACCESS_TOKEN_EXPIRE_MINUTES if not passed directly
+from app.models.user import User as UserModel
+from fastapi import WebSocket
+from typing import Optional
 
 router = APIRouter(tags=["Authentication"])
 
@@ -67,3 +69,20 @@ async def get_current_active_user(
     if not user.is_active:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user")
     return user
+
+@router.post("/ws-token", response_model=Token)
+async def get_websocket_token(current_user: UserModel = Depends(get_current_active_user)):
+    """
+    Generate a short-lived token specifically for authenticating a WebSocket connection.
+    """
+    # Create a new token for the current user. You could make this shorter-lived if desired.
+    access_token = create_access_token(data={"sub": current_user.username})
+    return {"access_token": access_token, "token_type": "bearer"}
+
+async def get_token_from_query(websocket: WebSocket) -> Optional[str]:
+    query_params = websocket.query_params
+    token = query_params.get("token")
+    if not token:
+        # This case can be handled in the websocket endpoint itself
+        return None
+    return token

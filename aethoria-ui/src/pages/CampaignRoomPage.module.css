@@ -1,0 +1,119 @@
+/* Path: src/pages/CampaignRoomPage.module.css */
+.pageContainer {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 60px); 
+    background-color: #2c2f33;
+    color: #ffffff;
+    font-family: var(--font-body-primary);
+}
+
+.header {
+    padding: 10px 20px;
+    background-color: #23272a;
+    border-bottom: 1px solid #4f545c;
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+}
+
+.title { margin: 0; font-family: var(--font-heading-ornate); font-size: 1.8em; color: var(--parchment-color); }
+.connected { font-size: 0.8em; font-weight: bold; color: #43b581; }
+.disconnected { font-size: 0.8em; font-weight: bold; color: #faa61a; }
+
+.mainContent {
+    display: flex;
+    flex-grow: 1;
+    overflow: hidden;
+}
+
+.leftColumn {
+    width: 250px;
+    padding: 15px;
+    background-color: #292b2f;
+    border-right: 1px solid #4f545c;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    overflow-y: auto;
+}
+
+.centerColumn {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    background-color: #36393f;
+}
+
+.mapContainer {
+    flex-grow: 1;
+    background-color: #202225;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2em;
+    color: #72767d;
+}
+
+.dmControls {
+    padding: 10px;
+    background-color: #2f3136;
+    border-top: 1px solid #4f545c;
+    text-align: center;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.rightColumn {
+    width: 300px;
+    background-color: #292b2f;
+    border-left: 1px solid #4f545c;
+    /* --- LAYOUT FIX: Use Flexbox to manage vertical space --- */
+    display: flex;
+    flex-direction: column;
+    padding: 15px;
+    gap: 20px;
+}
+
+.widgetTitle {
+    font-family: var(--font-script-annotation);
+    font-size: 1.5em;
+    color: var(--parchment-color);
+    border-bottom: 1px solid #4f545c;
+    padding-bottom: 5px;
+    margin-bottom: 10px;
+}
+
+.chatContainer {
+    /* --- LAYOUT FIX: Make this container grow and be a flex column itself --- */
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0; /* Important for flex-grow to work in a flex container */
+}
+
+.chatLog {
+    /* --- LAYOUT FIX: The log now scrolls, not the whole column --- */
+    flex-grow: 1;
+    overflow-y: auto;
+    background-color: #40444b;
+    border-radius: 4px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.chatMessage { padding: 4px 8px; border-radius: 4px; line-height: 1.4; word-wrap: break-word; }
+.chatMessage strong { color: #ffffff; margin-right: 8px; }
+
+.chatForm { display: flex; margin-top: 10px; gap: 10px; }
+.chatInput { flex-grow: 1; padding: 8px; border-radius: 4px; border: 1px solid #2f3136; background-color: #40444b; color: #dcddde; font-family: var(--font-body-primary); font-size: 1em; }
+.chatInput:focus { outline: none; border-color: var(--accent-color); }
+
+.diceRollMessage { background-color: rgba(88, 101, 242, 0.15); border-left: 3px solid #5865f2; padding: 8px; border-radius: 4px; font-style: italic; color: #b9bbbe; }
+.diceRollMessage strong { color: #ffffff; }
+.diceRollBreakdown { font-size: 0.9em; margin-left: 10px; color: #8e9297; }

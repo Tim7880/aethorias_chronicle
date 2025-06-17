@@ -24,7 +24,8 @@ from app.routers import races as race_router
 from app.routers import backgrounds as background_router
 from app.routers import conditions as condition_router
 from app.routers import admin as admin_router
-
+from app.routers import websockets
+from app.routers import campaign_sessions
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -84,6 +85,8 @@ app.include_router(race_router.router, prefix=settings.API_V1_STR)
 app.include_router(background_router.router, prefix=settings.API_V1_STR)
 app.include_router(condition_router.router, prefix=settings.API_V1_STR)
 app.include_router(admin_router.router, prefix=settings.API_V1_STR)
+app.include_router(websockets.router)
+app.include_router(campaign_sessions.router)
 
 @app.get("/")
 async def read_root():

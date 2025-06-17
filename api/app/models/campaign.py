@@ -4,11 +4,12 @@ from sqlalchemy.orm import relationship
 from app.db.base_class import Base
 from typing import TYPE_CHECKING
 import sqlalchemy as sa # Import sa for server_default text
+from typing import TYPE_CHECKING, List
 
 if TYPE_CHECKING:
     from .user import User
     from .campaign_member import CampaignMember
-
+    from .campaign_session import CampaignSession
 class Campaign(Base):
     __tablename__ = "campaigns"
 
@@ -22,6 +23,7 @@ class Campaign(Base):
     max_players = Column(Integer, nullable=True)
     next_session_utc = Column(DateTime(timezone=True), nullable=True)
     house_rules = Column(Text, nullable=True)
+    sessions = relationship("CampaignSession", back_populates="campaign", cascade="all, delete-orphan")
 
     # --- NEW FIELD for Session Notes ---
     session_notes = Column(Text, nullable=True)

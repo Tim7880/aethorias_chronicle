@@ -1,119 +1,123 @@
 /* Path: src/components/common/ThemedButton.module.css */
 
 .themedButton {
-  display: inline-flex; /* Changed to inline-flex for better alignment of rune/text if needed */
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  position: relative; /* For tooltip positioning */
-  
-  min-width: 40px; /* Ensure a decent clickable area */
+  position: relative;
+  min-width: 40px;
   min-height: 40px;
-  padding: 8px; /* Adjust padding for desired seal size */
-  border-radius: 50%; /* Makes it circular like a seal */
-  
-  border-width: 2px; /* Wax seal often has a thicker, slightly irregular edge */
+  padding: 8px 16px; /* Adjusted padding for text */
+  border-width: 2px;
   border-style: solid;
-  
-  font-family: var(--font-script-annotation); /* For any potential text or the tooltip */
-  color: var(--parchment-highlight); /* Rune color - can be overridden */
-  
+  font-family: var(--font-body-primary); /* Use primary font for text */
+  color: var(--parchment-highlight);
   cursor: pointer;
   transition: transform 0.1s ease-out, box-shadow 0.2s ease, background-color 0.2s ease;
   text-align: center;
   outline: none;
-  user-select: none; /* Prevent text selection of the rune */
+  user-select: none;
 }
 
 .waxSeal {
-  /* Conceptual wax texture - ideally a subtle background image or SVG filter */
-  /* For now, solid color with shadow */
-  box-shadow: 1px 1px 3px rgba(85, 83, 83, 0.3), /* Base shadow */
-              inset 0px 0px 2px rgba(0, 0, 0, 0.2); /* Slight inner shadow for depth */
+  box-shadow: 1px 1px 3px rgba(85, 83, 83, 0.3),
+    inset 0px 0px 2px rgba(0, 0, 0, 0.2);
 }
 
+/* --- NEW: Shape Modifiers --- */
+.shapeRound {
+  border-radius: 50%;
+  padding: 8px; /* Revert to tighter padding for circles */
+  min-width: 50px;
+  min-height: 50px;
+}
+
+.shapePill {
+  border-radius: 20px; /* Pill shape */
+}
+/* --- END NEW --- */
+
+
 .redSeal {
-  background-color: #960e0e; /* Deep red for wax (from our button brief) */
-  border-color: #4e0c0c; /* Darker edge for red wax */
+  background-color: #960e0e;
+  border-color: #4e0c0c;
 }
 
 .greenSeal {
-  background-color: #038f2d; /* Forest green for wax */
-  border-color: #1e4a2c; /* Darker edge for green wax */
+  background-color: #038f2d;
+  border-color: #1e4a2c;
 }
 
 .runeSymbol {
-  font-size: 1.6em; /* Adjust size of the rune character */
-  color: #FFD700; /* Gold-ish color for the rune itself (from our button brief) */
-  text-shadow: 0 0 3px rgba(255, 223, 0, 0.7), /* Base glow */
-               0 0 6px rgba(255, 176, 0, 0.5); /* Softer outer glow */
+  font-size: 1.6em;
+  color: #FFD700;
+  text-shadow: 0 0 3px rgba(255, 223, 0, 0.7),
+               0 0 6px rgba(255, 176, 0, 0.5);
   line-height: 1;
   display: inline-block;
   transition: text-shadow 0.2s ease-in-out, color 0.2s ease-in-out;
 }
 
-/* Hover State */
+/* --- NEW: Text Style for Buttons --- */
+.buttonText {
+    font-size: 1em;
+    font-weight: bold;
+    color: var(--parchment-color-light);
+    text-shadow: 1px 1px 1px rgba(0,0,0,0.4);
+}
+
 .themedButton:hover {
-  transform: translateY(-1px); /* Slight lift */
-  box-shadow: 2px 3px 6px rgba(0, 0, 0, 0.35), /* Enhanced shadow */
+  transform: translateY(-1px);
+  box-shadow: 2px 3px 6px rgba(0, 0, 0, 0.35),
               inset 0px 0px 3px rgba(0, 0, 0, 0.25);
 }
 
 .themedButton:hover .runeSymbol {
-  text-shadow: 0 0 5px #FFFFFF, /* Brighter inner glow */
-               0 0 10px #FFD700, /* Enhanced gold glow */
-               0 0 15px #FFB000; /* Wider outer glow */
-  color: #FFFACD; /* Lemon chiffon - brighter rune on hover */
-  /* Add particle effect conceptually - would need JS or more complex CSS animation */
+  text-shadow: 0 0 5px #FFFFFF,
+               0 0 10px #FFD700,
+               0 0 15px #FFB000;
+  color: #FFFACD;
 }
 
-/* Active/Pressed State */
 .themedButton:active {
-  transform: translateY(1px); /* Press down effect */
-  box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4), /* Reduced shadow */
+  transform: translateY(1px);
+  box-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4),
               inset 0px 0px 4px rgba(0, 0, 0, 0.3);
 }
 
-.themedButton:active .runeSymbol {
-  text-shadow: 0 0 2px #FFB000, /* Slightly dimmed flare */
-               0 0 4px #FF8C00; 
-  color: #FFD700; /* Back to gold or slightly less bright */
-}
-
-/* Disabled State */
 .themedButton:disabled {
-  background-color: #777777; /* Duller grey */
+  background-color: #777777;
   border-color: #555555;
   box-shadow: inset 0px 0px 2px rgba(0, 0, 0, 0.2);
   cursor: not-allowed;
-  transform: translateY(0); /* No lift */
+  transform: translateY(0);
 }
 
-.themedButton:disabled .runeSymbol {
-  color: #aaaaaa; /* Dimmed rune */
-  text-shadow: none; /* No glow */
+.themedButton:disabled .runeSymbol,
+.themedButton:disabled .buttonText {
+  color: #aaaaaa;
+  text-shadow: none;
 }
 
-
-/* Tooltip for Button (simple CSS tooltip) */
 .tooltipText {
   visibility: hidden;
-  min-width: 100px; /* Adjust as needed */
+  min-width: 100px;
   max-width: 200px;
-  background-color: var(--ink-color-dark); /* Use CSS variable */
-  color: var(--parchment-highlight);    /* Use CSS variable */
+  background-color: var(--ink-color-dark);
+  color: var(--parchment-highlight);
   text-align: center;
   border-radius: 4px;
   padding: 6px 8px;
   position: absolute;
   z-index: 10;
-  bottom: 115%; /* Position above the button */
+  bottom: 115%;
   left: 50%;
-  transform: translateX(-50%); /* Center the tooltip */
+  transform: translateX(-50%);
   opacity: 0;
   transition: opacity 0.2s ease-in-out;
-  font-family: var(--font-script-annotation); /* Using MedievalSharp */
+  font-family: var(--font-script-annotation);
   font-size: 0.9em;
-  white-space: nowrap; /* Keep tooltip on one line if short, or adjust */
+  white-space: nowrap;
 }
 
 .themedButton:hover .tooltipText {
