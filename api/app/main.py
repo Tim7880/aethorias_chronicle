@@ -86,7 +86,7 @@ app.include_router(background_router.router, prefix=settings.API_V1_STR)
 app.include_router(condition_router.router, prefix=settings.API_V1_STR)
 app.include_router(admin_router.router, prefix=settings.API_V1_STR)
 app.include_router(websockets.router)
-app.include_router(campaign_sessions.router)
+app.include_router(campaign_sessions.router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 async def read_root():

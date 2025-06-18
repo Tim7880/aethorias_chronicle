@@ -67,9 +67,15 @@ const AuthenticatedLayout: React.FC = () => {
   const auth = useAuth(); 
   const location = useLocation();
   const handleLogout = () => { auth.logout(); };
+  // --- START MODIFICATION ---
+  // Check if the current route is the campaign room
+  const isCampaignRoom = location.pathname.includes('/play');
 
+  // Conditionally apply the container class
+  const mainContentClass = isCampaignRoom ? '' : 'page-content-container';
+  // --- END MODIFICATION ---
   return (
-    <div>
+    <div className={mainContentClass}>
       <nav className="main-nav">
         <ul className="nav-list">
           <div className="nav-section">
@@ -79,12 +85,7 @@ const AuthenticatedLayout: React.FC = () => {
                 <li><NavLink to="/dashboard" style={navLinkStyle}>Dashboard</NavLink></li>
             )}
             <li><NavLink to="/discover-campaigns" style={navLinkStyle}>Discover</NavLink></li>
-            <li>
-              {/* --- MODIFICATION: Link now points to the main compendium page --- */}
-              <NavLink to="/compendium" style={navLinkStyle}>
-                Compendium
-              </NavLink>
-            </li>
+            <li><NavLink to="/compendium" style={navLinkStyle}>Compendium</NavLink></li>
           </div>
           <div className="nav-section">
             {auth.isAuthenticated && auth.user && (
@@ -123,13 +124,11 @@ function App() {
             <Route path="/compendium" element={<CompendiumPage />}>
               <Route path="classes" element={<ClassesViewPage />} />
               <Route path="races" element={<RacesViewPage />} />
-              {/* --- NEW ROUTES for Compendium --- */}
               <Route path="monsters" element={<MonstersViewPage />} />
               <Route path="spells" element={<SpellsViewPage />} />
               <Route path="items" element={<ItemsViewPage />} />
               <Route path="backgrounds" element={<BackgroundsViewPage />} />
               <Route path="conditions" element={<ConditionsViewPage />} />
-              {/* --- END NEW ROUTES --- */}
             </Route>
 
             <Route path="/character/:characterId/level-up/hp" element={<LevelUpHPPage />} />

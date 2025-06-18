@@ -240,6 +240,19 @@ const [sessionDate, setSessionDate] = useState('');
             </p>
           </header>
 
+          <div className={styles.gameControls}>
+            <h2 className={styles.sectionTitle}>Game Controls</h2>
+            <Link to={`/campaigns/${campaignId}/play`} style={{ textDecoration: 'none' }}>
+              <ThemedButton 
+                variant="green" 
+                shape="pill" 
+                tooltipText="Open the real-time game room for this campaign"
+              >
+                Launch Game Room
+              </ThemedButton>
+            </Link>
+          </div>
+
           {campaign.description && (
             <div className={styles.box} style={{marginBottom: '25px'}}>
               <h2 className={styles.sectionTitle}>Campaign Description</h2>

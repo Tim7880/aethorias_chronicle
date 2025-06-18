@@ -75,4 +75,20 @@ export interface CampaignUpdatePayload {
     session_notes?: string | null;
 }
 // --- END NEW ---
+export interface InitiativeEntry {
+  id: number;
+  session_id: number;
+  character_id?: number | null;
+  monster_name?: string | null;
+  initiative_roll: number;
+  // The backend can populate the character details for us
+  character?: Pick<Character, 'id' | 'name'> | null;
+}
 
+export interface CampaignSession {
+  id: number;
+  campaign_id: number;
+  is_active: boolean;
+  map_state?: Record<string, any> | null;
+  initiative_entries: InitiativeEntry[];
+}

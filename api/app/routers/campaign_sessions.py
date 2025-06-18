@@ -107,3 +107,12 @@ async def clear_all_initiative(
     await crud_campaign_session.clear_initiative(db, session_id=session_id)
     return
 
+# --- NEW ENDPOINT ---
+@router.get("/campaign/{campaign_id}/active", response_model=CampaignSessionSchema)
+async def get_active_session(campaign_id: int, db: AsyncSession = Depends(get_db)):
+    """Get the currently active session for a campaign, if one exists."""
+    active_session = await crud_campaign_session.get_active_session_for_campaign(db, campaign_id=campaign_id)
+    if not active_session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No active session found for this campaign.")
+    return active_session
+# --- END NEW ENDPOINT ---

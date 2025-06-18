@@ -2,12 +2,16 @@
 
 /* Main application container */
 #root {
-  max-width: 1280px; /* Or adjust to your preferred max width */
-  margin: 0 auto;
-  padding: 2rem;
+  
   text-align: center;
 }
 
+/* --- NEW: Page content container for standard pages --- */
+.page-content-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
 /* --- STYLES MOVED FROM App.tsx --- */
 
 /* Main navigation bar in AuthenticatedLayout */

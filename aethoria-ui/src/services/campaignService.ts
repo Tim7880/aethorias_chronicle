@@ -1,5 +1,5 @@
 // Path: src/services/campaignService.ts
-import type { Campaign, CampaignMember, PlayerCampaignJoinRequest, CampaignCreatePayload, CampaignUpdatePayload } from '../types/campaign'; // Added PlayerCampaignJoinRequest
+import type { Campaign, CampaignMember, PlayerCampaignJoinRequest, CampaignCreatePayload, CampaignUpdatePayload, CampaignSession } from '../types/campaign'; // Added PlayerCampaignJoinRequest
 import type { Character } from '../types/character';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1';
@@ -348,6 +348,31 @@ export const campaignService = {
       return response.json() as Promise<Campaign>;
   },
 
+  startCampaignSession: async (token: string, campaignId: number): Promise<CampaignSession> => {
+    const response = await fetch(`${API_BASE_URL}/sessions/start/${campaignId}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.detail || `Failed to start session (status: ${response.status})`);
+    }
+    return response.json() as Promise<CampaignSession>;
+  },
+
+  getActiveSession: async (token: string, campaignId: number): Promise<CampaignSession | null> => {
+      const response = await fetch(`${API_BASE_URL}/sessions/campaign/${campaignId}/active`, {
+          headers: { 'Authorization': `Bearer ${token}` },
+      });
+      if (response.status === 404) {
+          return null; 
+      }
+      if (!response.ok) {
+          throw new Error("Failed to fetch active session.");
+      }
+      return response.json();
+  },
 };
+
 
 

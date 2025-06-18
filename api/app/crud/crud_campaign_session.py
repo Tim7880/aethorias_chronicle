@@ -27,7 +27,18 @@ async def start_session(db: AsyncSession, campaign_id: int) -> CampaignSession:
     db.add(new_session)
     await db.commit()
     await db.refresh(new_session)
-    return new_session
+
+    # --- START FIX ---
+    # The error happens because the `initiative_entries` relationship is not loaded
+    # before the session is closed. We need to re-fetch the object with the relationship
+    # explicitly loaded to prevent the lazy-loading error during serialization.
+    result = await db.execute(
+        select(CampaignSession)
+        .options(selectinload(CampaignSession.initiative_entries))
+        .filter(CampaignSession.id == new_session.id)
+    )
+    session_with_relations = result.scalars().one()
+    return session_with_relations
 
 async def end_session(db: AsyncSession, session_id: int) -> Optional[CampaignSession]:
     """Ends a specific session by setting its is_active flag to False."""

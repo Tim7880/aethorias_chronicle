@@ -3,7 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 
 // --- MODIFICATION: Added 'export' to the interface ---
 export interface WebSocketMessage {
-    type: 'chat' | 'dice_roll' | 'initiative_update' | 'map_update' | 'user_join' | 'user_leave';
+    type: 'chat' | 'dice_roll' | 'initiative_update' | 'map_update' | 'user_join' | 'user_leave' | 'turn_update' | 'error';
     payload: any;
     sender: string;
     timestamp: string;
