@@ -25,3 +25,4 @@ class InitiativeEntry(Base):
     # Relationships
     session = relationship("CampaignSession", back_populates="initiative_entries")
     character = relationship("Character")
+

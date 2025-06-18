@@ -1,5 +1,5 @@
 # Path: api/app/routers/websockets.py
-from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, status, HTTPException
+from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Dict, Optional
 import json
@@ -8,15 +8,16 @@ import random
 from app.db.database import get_db
 from app.models.user import User as UserModel
 from app.models.campaign import Campaign as CampaignModel
-from app.crud import crud_user, crud_campaign_session
-from app.schemas.initiative_entry import InitiativeEntryCreate
 from app.routers.auth import get_user_from_websocket_token
 
 router = APIRouter()
 
 class ConnectionManager:
     def __init__(self):
+        # active_connections maps: { campaign_id: { user_id: WebSocket } }
         self.active_connections: Dict[int, Dict[int, WebSocket]] = {}
+        # NEW: In-memory store for the initiative text for each campaign
+        self.initiative_texts: Dict[int, str] = {}
 
     async def connect(self, websocket: WebSocket, campaign_id: int, user: UserModel):
         await websocket.accept()
@@ -29,17 +30,20 @@ class ConnectionManager:
         if campaign_id in self.active_connections and user.id in self.active_connections[campaign_id]:
             del self.active_connections[campaign_id][user.id]
             print(f"User '{user.username}' disconnected from campaign {campaign_id}.")
+            # If the room is now empty, clear its initiative text from memory
             if not self.active_connections[campaign_id]:
                 del self.active_connections[campaign_id]
+                if campaign_id in self.initiative_texts:
+                    del self.initiative_texts[campaign_id]
 
-    async def broadcast_json(self, data: dict, campaign_id: int):
+    async def broadcast_json(self, data: dict, campaign_id: int, exclude_websocket: Optional[WebSocket] = None):
         if campaign_id in self.active_connections:
-            connections = list(self.active_connections[campaign_id].values())
-            for connection in connections:
-                try:
-                    await connection.send_json(data)
-                except Exception as e:
-                    print(f"Failed to send message: {e}")
+            for connection in self.active_connections[campaign_id].values():
+                if connection is not exclude_websocket:
+                    try:
+                        await connection.send_json(data)
+                    except Exception as e:
+                        print(f"Failed to send message: {e}")
 
 manager = ConnectionManager()
 
@@ -52,74 +56,45 @@ async def websocket_endpoint(
 ):
     await manager.connect(websocket, campaign_id, user)
     
+    # Announce user join to everyone
     join_message = {"type": "user_join", "sender": "System", "payload": f"User '{user.username}' has joined."}
     await manager.broadcast_json(join_message, campaign_id)
 
-    active_session = await crud_campaign_session.get_active_session_for_campaign(db, campaign_id=campaign_id)
-    if active_session:
-        initiative_order = await crud_campaign_session.get_initiative_order(db, session_id=active_session.id)
-        initiative_payload = [entry.model_dump() for entry in initiative_order]
-        await websocket.send_json({"type": "initiative_update", "payload": initiative_payload})
+    # Send the current initiative text ONLY to the newly connected user
+    if campaign_id in manager.initiative_texts:
+        await websocket.send_json({
+            "type": "initiative_text_update",
+            "payload": {"text": manager.initiative_texts[campaign_id]}
+        })
 
     try:
         while True:
             data = await websocket.receive_text()
             message_data = json.loads(data)
             message_data['sender'] = user.username
-            
-            active_session = await crud_campaign_session.get_active_session_for_campaign(db, campaign_id=campaign_id)
-            if not active_session:
-                if message_data['type'] == 'chat':
-                     await manager.broadcast_json(message_data, campaign_id)
-                continue
 
             campaign = await db.get(CampaignModel, campaign_id)
             is_dm = campaign and campaign.dm_user_id == user.id
 
-            if message_data['type'] == 'dice_roll':
-                try:
-                    sides = int(message_data['payload']['sides'])
-                    count = int(message_data['payload'].get('count', 1))
-                    rolls = [random.randint(1, sides) for _ in range(count)]
-                    message_data['payload'] = { "sides": sides, "count": count, "rolls": rolls, "total": sum(rolls) }
-                    await manager.broadcast_json(message_data, campaign_id)
-                except Exception as e:
-                    await websocket.send_json({"type": "error", "payload": f"Invalid dice roll: {e}"})
-
-            elif message_data['type'] == 'chat':
+            # --- UPDATED LOGIC ---
+            if message_data['type'] == 'dice_roll' or message_data['type'] == 'chat':
                 await manager.broadcast_json(message_data, campaign_id)
 
-            elif message_data['type'] == 'add_initiative' and is_dm:
-                try:
-                    entry_schema = InitiativeEntryCreate(**message_data['payload'])
-                    await crud_campaign_session.add_initiative_entry(db, session_id=active_session.id, entry_in=entry_schema)
-                    updated_order = await crud_campaign_session.get_initiative_order(db, session_id=active_session.id)
-                    initiative_payload = [entry.model_dump() for entry in updated_order]
-                    await manager.broadcast_json({"type": "initiative_update", "payload": initiative_payload}, campaign_id)
-                except Exception as e:
-                    await websocket.send_json({"type": "error", "payload": f"Failed to add initiative: {e}"})
-
-            elif message_data['type'] == 'clear_initiative' and is_dm:
-                try:
-                    await crud_campaign_session.clear_initiative(db, session_id=active_session.id)
-                    await manager.broadcast_json({"type": "initiative_update", "payload": []}, campaign_id)
-                except Exception as e:
-                    await websocket.send_json({"type": "error", "payload": f"Failed to clear initiative: {e}"})
-                
-            elif message_data['type'] == 'next_turn' and is_dm:
-                try:
-                    next_active_entry = await crud_campaign_session.advance_turn(db, session_id=active_session.id)
-                    await manager.broadcast_json({
-                        "type": "turn_update",
-                        "payload": {"active_entry_id": next_active_entry.id if next_active_entry else None}
-                    }, campaign_id)
-                except Exception as e:
-                    await websocket.send_json({"type": "error", "payload": f"Failed to advance turn: {e}"})
+            elif message_data['type'] == 'initiative_text_update' and is_dm:
+                # Get the text from the DM's message
+                text = message_data.get('payload', {}).get('text', '')
+                # Store it on the server
+                manager.initiative_texts[campaign_id] = text
+                # Broadcast the update to everyone else
+                await manager.broadcast_json(message_data, campaign_id, exclude_websocket=websocket)
+            
+            # --- END UPDATED LOGIC ---
 
     except WebSocketDisconnect:
+        pass # Let the finally block handle cleanup
+    except Exception as e:
+        print(f"An error occurred in websocket for campaign {campaign_id}: {e}")
+    finally:
         manager.disconnect(campaign_id, user)
         leave_message = {"type": "user_leave", "sender": "System", "payload": f"User '{user.username}' has left."}
         await manager.broadcast_json(leave_message, campaign_id)
-    except Exception as e:
-        print(f"An error occurred in websocket for campaign {campaign_id}: {e}")
-        manager.disconnect(campaign_id, user)

@@ -25,3 +25,5 @@ class CampaignSession(Base):
     # Relationships
     campaign = relationship("Campaign", back_populates="sessions")
     initiative_entries = relationship("InitiativeEntry", back_populates="session", cascade="all, delete-orphan")
+    
+
