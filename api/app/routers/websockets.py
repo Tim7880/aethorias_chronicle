@@ -82,6 +82,7 @@ async def websocket_endpoint(
                     manager.encounter_states[campaign_id] = {
                         "is_active": True,
                         "turn_index": 0,
+                        "active_entry_id": initiative_order[0]['id'] if initiative_order else None,
                         "order": sorted(initiative_order, key=lambda x: x['roll'], reverse=True)
                     }
                     await manager.broadcast_json({"type": "encounter_update", "payload": manager.encounter_states[campaign_id]}, campaign_id)

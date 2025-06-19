@@ -28,9 +28,7 @@ const CampaignRoomPage: React.FC = () => {
     const [isEncounterModalOpen, setIsEncounterModalOpen] = useState(false);
     const [monsters, setMonsters] = useState<Monster[]>([]);
     
-    // --- START FIX: Destructure the CORRECT setters from the hook ---
     const { chatLogMessages, encounterState, setEncounterState, isConnected, sendMessage } = useCampaignSocket(campaignId, auth.token);
-    // --- END FIX ---
     
     const [chatInput, setChatInput] = useState('');
     const chatLogRef = useRef<HTMLDivElement>(null);
@@ -191,6 +189,6 @@ const CampaignRoomPage: React.FC = () => {
             )}
         </>
     );
-};
+}
 
 export default CampaignRoomPage;
