@@ -1,11 +1,11 @@
 // Path: src/pages/CampaignRoomPage.tsx
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { campaignService } from '../services/campaignService';
 import { characterService } from '../services/characterService';
 import { gameDataService } from '../services/gameDataService';
-import type { Campaign, Character } from '../types/campaign';
+import type { Campaign, Character, InitiativeEntry } from '../types/campaign';
 import type { Monster } from '../types/monster';
 import EncounterModal, { type Combatant } from '../components/game/EncounterModal';
 import styles from './CampaignRoomPage.module.css';
@@ -18,18 +18,25 @@ import InitiativeTracker from '../components/game/InitiativeTracker';
 const CampaignRoomPage: React.FC = () => {
     const { campaignId } = useParams<{ campaignId: string }>();
     const auth = useAuth();
+    const navigate = useNavigate();
 
+    // --- Core State ---
     const [campaign, setCampaign] = useState<Campaign | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isDm, setIsDm] = useState(false);
     
+    // --- Modal State ---
     const [modalCharacter, setModalCharacter] = useState<Character | null>(null);
     const [isEncounterModalOpen, setIsEncounterModalOpen] = useState(false);
+
+    // --- Game Data State ---
     const [monsters, setMonsters] = useState<Monster[]>([]);
     
+    // --- Real-time State from WebSocket ---
     const { chatLogMessages, encounterState, setEncounterState, isConnected, sendMessage } = useCampaignSocket(campaignId, auth.token);
     
+    // --- UI State ---
     const [chatInput, setChatInput] = useState('');
     const chatLogRef = useRef<HTMLDivElement>(null);
 
@@ -39,10 +46,14 @@ const CampaignRoomPage: React.FC = () => {
         return myMembership?.character || null;
     }, [auth.user, campaign]);
 
+    // This effect is now only for scrolling the chat log
     useEffect(() => {
-        if (chatLogRef.current) chatLogRef.current.scrollTop = chatLogRef.current.scrollHeight;
+        if (chatLogRef.current) {
+            chatLogRef.current.scrollTop = chatLogRef.current.scrollHeight;
+        }
     }, [chatLogMessages]);
 
+    // This effect handles fetching all necessary data when the component mounts
     useEffect(() => {
         const fetchAllData = async () => {
             if (!auth.token || !campaignId) return;
@@ -51,45 +62,50 @@ const CampaignRoomPage: React.FC = () => {
                 const [campaignData, monsterData, sessionData] = await Promise.all([
                     campaignService.getCampaignById(auth.token, id),
                     gameDataService.getMonsters(auth.token),
-                    campaignService.getActiveSession(auth.token, id)
+                    campaignService.getActiveSession(auth.token, id).catch(() => null) // Gracefully handle if no session exists
                 ]);
                 
                 setCampaign(campaignData);
                 setMonsters(monsterData.sort((a, b) => a.name.localeCompare(b.name)));
-                if (sessionData) setEncounterState(sessionData);
-
+                
                 const dmStatus = !!(auth.user && campaignData.dm_user_id === auth.user.id);
                 setIsDm(dmStatus);
 
-                if (!sessionData && dmStatus) {
+                // If a session already exists, join it. If not, and you're the DM, create it.
+                if (sessionData) {
+                    setEncounterState(sessionData);
+                } else if (dmStatus) {
                     const newSession = await campaignService.startCampaignSession(auth.token, id);
                     setEncounterState(newSession);
                 }
             } catch (err: any) {
-                if (!err.message.includes("404")) {
-                    setError(err.message || 'Failed to load campaign data.');
-                }
+                setError(err.message || 'Failed to load campaign data.');
+                if (err.message.includes("Unauthorized")) navigate('/dashboard');
             } finally {
                 setIsLoading(false);
             }
         };
         fetchAllData();
-    }, [auth.token, campaignId, auth.user, setEncounterState]); // Added setEncounterState to dependency array
+    }, [auth.token, campaignId, auth.user, setEncounterState, navigate]);
+
+    // Handle incoming WebSocket messages to update state
+    useEffect(() => {
+        const lastMessage = chatLogMessages[chatLogMessages.length - 1];
+        if (lastMessage?.type === 'encounter_update') {
+            setEncounterState(lastMessage.payload);
+        }
+    }, [chatLogMessages, setEncounterState]);
 
     const handleSendMessage = (e: React.FormEvent) => {
         e.preventDefault();
         if (chatInput.trim() && isConnected) {
-            const senderName = myCharacter?.name || auth.user?.username || 'Anonymous';
-            sendMessage('chat', { text: chatInput, characterName: senderName });
+            sendMessage('chat', { text: chatInput, characterName: myCharacter?.name || auth.user?.username });
             setChatInput('');
         }
     };
 
     const handleRollDice = (sides: number, count: number) => {
-        if (isConnected) {
-            const rollerName = myCharacter?.name || auth.user?.username || 'A player';
-            sendMessage('dice_roll', { sides, count, characterName: rollerName });
-        }
+        if (isConnected) sendMessage('dice_roll', { sides, count, characterName: myCharacter?.name || auth.user?.username });
     };
     
     const handlePlayerNameClick = async (characterId: number) => {
@@ -106,11 +122,11 @@ const CampaignRoomPage: React.FC = () => {
         setIsEncounterModalOpen(false);
     };
 
-    const activeInitiativeEntries = encounterState?.is_active ? encounterState.initiative_entries : [];
+    const activeInitiativeEntries: InitiativeEntry[] = encounterState?.is_active ? encounterState.initiative_entries : [];
     const activeTurnId = encounterState?.is_active ? encounterState.active_initiative_entry_id : null;
 
-    if (isLoading) return <div className={styles.pageContainer}><h1>Loading...</h1></div>;
-    if (error) return <div className={styles.pageContainer}><h1>Error: {error}</h1></div>;
+    if (isLoading) return <div className={styles.pageContainer}><h1>Loading Campaign Room...</h1></div>;
+    if (error && !modalCharacter) return <div className={styles.pageContainer}><h1>Error: {error}</h1></div>;
     if (!campaign) return <div className={styles.pageContainer}><h1>Campaign not found.</h1></div>;
     if (!encounterState && !isDm) return <div className={styles.pageContainer}><p>The Dungeon Master has not started the session yet.</p></div>
 
@@ -158,8 +174,17 @@ const CampaignRoomPage: React.FC = () => {
                             <h2 className={styles.widgetTitle}>Chat Log</h2>
                             <div ref={chatLogRef} className={styles.chatLog}>
                                 {chatLogMessages.map((msg, index) => (
-                                    <div key={index} className={styles.chatMessage}>
-                                        <strong>{msg.sender}:</strong> {msg.payload.text || msg.payload}
+                                    <div key={index}>
+                                        {msg.type === 'dice_roll' ? (
+                                            <div className={styles.diceRollMessage}>
+                                                <strong>{msg.sender}:</strong> rolled {msg.payload.count}d{msg.payload.sides}: <strong> {msg.payload.total}</strong>
+                                                <span className={styles.diceRollBreakdown}> ({msg.payload.rolls.join(' + ')})</span>
+                                            </div>
+                                        ) : (
+                                            <div className={styles.chatMessage}>
+                                                <strong>{msg.sender}:</strong> {msg.payload.text || msg.payload}
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>
@@ -178,7 +203,7 @@ const CampaignRoomPage: React.FC = () => {
             
             <CharacterStatModal character={modalCharacter} onClose={() => setModalCharacter(null)} />
 
-            {isDm && (
+            {isDm && campaign && (
                 <EncounterModal 
                     isOpen={isEncounterModalOpen}
                     onClose={() => setIsEncounterModalOpen(false)}
@@ -189,6 +214,6 @@ const CampaignRoomPage: React.FC = () => {
             )}
         </>
     );
-}
+};
 
 export default CampaignRoomPage;

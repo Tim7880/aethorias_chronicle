@@ -1,14 +1,16 @@
 # Path: api/app/routers/websockets.py
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from typing import List, Dict, Any, Optional
 import json
-from sqlalchemy.orm import selectinload
+import random 
+
 from app.db.database import get_db
 from app.models.user import User as UserModel
 from app.models.campaign import Campaign as CampaignModel
+from app.models.campaign_member import CampaignMember
 from app.routers.auth import get_user_from_websocket_token
-from app.schemas.initiative_entry import InitiativeEntryCreate
 
 router = APIRouter()
 
@@ -51,8 +53,28 @@ async def websocket_endpoint(
 ):
     await manager.connect(websocket, campaign_id, user)
     
-    join_message = {"type": "user_join", "sender": "System", "payload": f"User '{user.username}' has joined."}
-    await manager.broadcast_json(join_message, campaign_id)
+    # --- START FIX: Pre-fetch all necessary data ONCE on connect ---
+    sender_name = user.username # Default sender name
+    is_dm = False
+    try:
+        campaign = await db.get(
+            CampaignModel, 
+            campaign_id, 
+            options=[selectinload(CampaignModel.members).selectinload(CampaignMember.character)]
+        )
+        if campaign:
+            is_dm = campaign.dm_user_id == user.id
+            my_member_record = next((m for m in campaign.members if m.user_id == user.id), None)
+            if my_member_record and my_member_record.character:
+                sender_name = my_member_record.character.name
+    except Exception as e:
+        print(f"Error fetching initial campaign data: {e}")
+        await websocket.close(code=status.WS_1011_INTERNAL_ERROR)
+        manager.disconnect(campaign_id, user)
+        return
+    # --- END FIX ---
+    
+    await manager.broadcast_json({"type": "user_join", "sender": "System", "payload": {"text": f"'{sender_name}' has joined."}}, campaign_id)
 
     if campaign_id in manager.encounter_states:
         await websocket.send_json({"type": "encounter_update", "payload": manager.encounter_states[campaign_id]})
@@ -62,40 +84,55 @@ async def websocket_endpoint(
             data = await websocket.receive_text()
             message_data = json.loads(data)
             
-            # Use character name if available, otherwise username
-            my_member_record = next((m for m in (await db.get(CampaignModel, campaign_id, options=[selectinload(CampaignModel.members).selectinload("character")])).members if m.user_id == user.id), None)
-            sender_name = my_member_record.character.name if my_member_record and my_member_record.character else user.username
+            # Use pre-fetched sender name
             message_data['sender'] = sender_name
 
             if 'payload' in message_data and isinstance(message_data['payload'], dict):
                 message_data['payload']['characterName'] = sender_name
+            
+            # --- START FIX: Process public messages first ---
+            if message_data['type'] == 'dice_roll':
+                payload = message_data['payload']
+                try:
+                    sides = int(payload['sides'])
+                    count = int(payload.get('count', 1))
+                    rolls = [random.randint(1, sides) for _ in range(count)]
+                    payload['rolls'] = rolls
+                    payload['total'] = sum(rolls)
+                    await manager.broadcast_json(message_data, campaign_id)
+                except (ValueError, KeyError):
+                    await websocket.send_json({"type": "error", "payload": {"text": "Invalid dice roll request."}})
 
-
-            is_dm = (await db.get(CampaignModel, campaign_id)).dm_user_id == user.id
-
-            if message_data['type'] in ['chat', 'dice_roll']:
+            elif message_data['type'] == 'chat':
                 await manager.broadcast_json(message_data, campaign_id)
+            # --- END FIX ---
 
-            elif is_dm:
+            elif is_dm: # DM-only actions below
+                current_encounter = manager.encounter_states.get(campaign_id, {})
+                
                 if message_data['type'] == 'start_encounter':
-                    initiative_order = message_data['payload']
-                    manager.encounter_states[campaign_id] = {
+                    initiative_order = message_data.get('payload', [])
+                    sorted_order = sorted(initiative_order, key=lambda x: x.get('roll', 0), reverse=True)
+                    active_entry = sorted_order[0] if sorted_order else None
+                    current_encounter = {
                         "is_active": True,
                         "turn_index": 0,
-                        "active_entry_id": initiative_order[0]['id'] if initiative_order else None,
-                        "order": sorted(initiative_order, key=lambda x: x['roll'], reverse=True)
+                        "order": sorted_order,
+                        "active_entry_id": active_entry['id'] if active_entry else None
                     }
-                    await manager.broadcast_json({"type": "encounter_update", "payload": manager.encounter_states[campaign_id]}, campaign_id)
+                    manager.encounter_states[campaign_id] = current_encounter
+                    await manager.broadcast_json({"type": "encounter_update", "payload": current_encounter}, campaign_id)
 
                 elif message_data['type'] == 'next_turn':
-                    if campaign_id in manager.encounter_states and manager.encounter_states[campaign_id]['is_active']:
-                        current_state = manager.encounter_states[campaign_id]
-                        current_state['turn_index'] = (current_state['turn_index'] + 1) % len(current_state['order'])
-                        await manager.broadcast_json({"type": "encounter_update", "payload": current_state}, campaign_id)
+                    if current_encounter.get('is_active') and current_encounter.get('order'):
+                        order = current_encounter['order']
+                        current_encounter['turn_index'] = (current_encounter.get('turn_index', -1) + 1) % len(order)
+                        current_encounter['active_entry_id'] = order[current_encounter['turn_index']]['id']
+                        await manager.broadcast_json({"type": "encounter_update", "payload": current_encounter}, campaign_id)
                 
                 elif message_data['type'] == 'end_encounter':
                     if campaign_id in manager.encounter_states:
-                        manager.encounter_states[campaign_id] = {"is_active": False, "order": [], "turn_index": -1}
+                        manager.encounter_states[campaign_id] = {"is_active": False, "order": [], "turn_index": -1, "active_entry_id": None}
                         await manager.broadcast_json({"type": "encounter_update", "payload": manager.encounter_states[campaign_id]}, campaign_id)
     
     except WebSocketDisconnect:
@@ -104,5 +141,5 @@ async def websocket_endpoint(
         print(f"Websocket Error: {e}")
     finally:
         manager.disconnect(campaign_id, user)
-        leave_message = {"type": "user_leave", "sender": "System", "payload": f"User '{user.username}' has left."}
-        await manager.broadcast_json(leave_message, campaign_id)
+        await manager.broadcast_json({"type": "user_leave", "sender": "System", "payload": {"text": f"'{sender_name}' has left."}}, campaign_id)
+
