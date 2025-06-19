@@ -149,3 +149,25 @@
     justify-content: space-between;
     align-items: center;
 }
+
+.playerList {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.playerListItem {
+    padding: 5px 0;
+    color: #b9bbbe;
+}
+
+.playerListItemClickable {
+    cursor: pointer;
+    color: var(--parchment-color-light);
+    transition: color 0.2s;
+}
+
+.playerListItemClickable:hover {
+    color: var(--accent-color-light);
+    text-decoration: underline;
+}

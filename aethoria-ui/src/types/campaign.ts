@@ -91,4 +91,7 @@ export interface CampaignSession {
   is_active: boolean;
   map_state?: Record<string, any> | null;
   initiative_entries: InitiativeEntry[];
+  active_initiative_entry_id: number | null;
 }
+
+export type EncounterState = CampaignSession;
