@@ -5,7 +5,9 @@ import { useAuth } from '../contexts/AuthContext';
 import { campaignService } from '../services/campaignService';
 import { characterService } from '../services/characterService';
 import { gameDataService } from '../services/gameDataService';
-import type { Campaign, Character, InitiativeEntry } from '../types/campaign';
+// --- START FIX: Removed unused 'EncounterState' and 'InitiativeEntry' types ---
+import type { Campaign, Character } from '../types/campaign';
+// --- END FIX ---
 import type { Monster } from '../types/monster';
 import EncounterModal, { type Combatant } from '../components/game/EncounterModal';
 import styles from './CampaignRoomPage.module.css';
@@ -14,6 +16,7 @@ import { useCampaignSocket } from '../hooks/useCampaignSocket';
 import DiceRoller from '../components/game/DiceRoller';
 import CharacterStatModal from '../components/game/CharacterStatModal';
 import InitiativeTracker from '../components/game/InitiativeTracker';
+
 
 const CampaignRoomPage: React.FC = () => {
     const { campaignId } = useParams<{ campaignId: string }>();
@@ -88,14 +91,6 @@ const CampaignRoomPage: React.FC = () => {
         fetchAllData();
     }, [auth.token, campaignId, auth.user, setEncounterState, navigate]);
 
-    // Handle incoming WebSocket messages to update state
-    useEffect(() => {
-        const lastMessage = chatLogMessages[chatLogMessages.length - 1];
-        if (lastMessage?.type === 'encounter_update') {
-            setEncounterState(lastMessage.payload);
-        }
-    }, [chatLogMessages, setEncounterState]);
-
     const handleSendMessage = (e: React.FormEvent) => {
         e.preventDefault();
         if (chatInput.trim() && isConnected) {
@@ -122,7 +117,7 @@ const CampaignRoomPage: React.FC = () => {
         setIsEncounterModalOpen(false);
     };
 
-    const activeInitiativeEntries: InitiativeEntry[] = encounterState?.is_active ? encounterState.initiative_entries : [];
+    const activeInitiativeEntries = encounterState?.is_active ? encounterState.initiative_entries : [];
     const activeTurnId = encounterState?.is_active ? encounterState.active_initiative_entry_id : null;
 
     if (isLoading) return <div className={styles.pageContainer}><h1>Loading Campaign Room...</h1></div>;

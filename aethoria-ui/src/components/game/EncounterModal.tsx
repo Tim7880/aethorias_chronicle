@@ -1,16 +1,14 @@
 // Path: src/components/game/EncounterModal.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { CampaignMember } from '../../types/campaign';
 import type { Monster } from '../../types/monster';
 import ThemedButton from '../common/ThemedButton';
 import styles from './EncounterModal.module.css';
-
 export interface Combatant {
   id: string; // Can be 'char_1' or 'Goblin'
   name: string;
   roll: number;
 }
-
 interface EncounterModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -19,11 +17,18 @@ interface EncounterModalProps {
   monsters: Monster[];
 }
 
-
 const EncounterModal: React.FC<EncounterModalProps> = ({ isOpen, onClose, onSubmit, players, monsters }) => {
   const [combatants, setCombatants] = useState<Combatant[]>([]);
   const [selectedTarget, setSelectedTarget] = useState('');
   const [initiativeRoll, setInitiativeRoll] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      setCombatants([]);
+      setSelectedTarget('');
+      setInitiativeRoll('');
+    }
+  }, [isOpen]); // This effect runs whenever the 'isOpen' prop changes.--
 
   if (!isOpen) return null;
 
@@ -41,7 +46,6 @@ const EncounterModal: React.FC<EncounterModalProps> = ({ isOpen, onClose, onSubm
       ? players.find(p => `char_${p.character?.id}` === id)?.character?.name || 'Unknown Player'
       : monsters.find(m => m.name === id)?.name || 'Unknown Monster';
 
-    // Check for duplicates
     if (combatants.find(c => c.id === id)) {
         alert(`${name} is already in the encounter.`);
         return;
