@@ -28,10 +28,6 @@ async def start_session(db: AsyncSession, campaign_id: int) -> CampaignSession:
     await db.commit()
     await db.refresh(new_session)
 
-    # --- START FIX ---
-    # The error happens because the `initiative_entries` relationship is not loaded
-    # before the session is closed. We need to re-fetch the object with the relationship
-    # explicitly loaded to prevent the lazy-loading error during serialization.
     result = await db.execute(
         select(CampaignSession)
         .options(selectinload(CampaignSession.initiative_entries))
@@ -83,3 +79,40 @@ async def clear_initiative(db: AsyncSession, session_id: int):
     
     await db.commit()
     return {"message": "Initiative cleared successfully."}
+
+async def advance_turn(db: AsyncSession, session_id: int) -> Optional[InitiativeEntry]:
+    """
+    Advances the turn to the next combatant in the initiative order.
+    Returns the new active entry, or None if combat ends.
+    """
+    session = await db.get(CampaignSession, session_id)
+    if not session or not session.is_active:
+        raise ValueError("No active session found.")
+
+    initiative_order = await get_initiative_order(db, session_id=session_id)
+    if not initiative_order:
+        session.active_initiative_entry_id = None
+        await db.commit()
+        return None
+
+    # --- START FIX: More robust logic for advancing the turn ---
+    current_active_id = session.active_initiative_entry_id
+    if current_active_id is None:
+        # If no turn is active, start with the first person in the order.
+        next_entry = initiative_order[0]
+    else:
+        try:
+            current_index = [entry.id for entry in initiative_order].index(current_active_id)
+            # Move to the next index, or loop back to the start
+            next_index = (current_index + 1) % len(initiative_order)
+            next_entry = initiative_order[next_index]
+        except ValueError:
+            # The currently active character is no longer in initiative, start from the top.
+            next_entry = initiative_order[0]
+    # --- END FIX ---
+    
+    session.active_initiative_entry_id = next_entry.id
+    db.add(session)
+    await db.commit()
+    
+    return next_entry

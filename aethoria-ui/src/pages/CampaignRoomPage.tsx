@@ -90,8 +90,6 @@ const CampaignRoomPage: React.FC = () => {
         fetchAllData();
     }, [fetchAllData]);
 
-   
-
     const handleSendMessage = (e: React.FormEvent) => {
         e.preventDefault();
         if (chatInput.trim() && isConnected) {

@@ -5,6 +5,11 @@ from sqlalchemy.orm import selectinload
 from typing import List, Dict, Any, Optional
 import json
 import random
+from app.crud import crud_campaign_session
+from app.db.database import AsyncSession
+from app.models.initiative_entry import InitiativeEntry
+from fastapi import Depends
+
 
 from app.db.database import get_db
 from app.models.user import User as UserModel
@@ -79,6 +84,9 @@ async def websocket_endpoint(
     
     sender_name = user.username
     is_dm = False
+
+    active_session = None
+
     try:
         campaign = await db.get(CampaignModel, campaign_id, options=[selectinload(CampaignModel.members).selectinload(CampaignMember.character)])
         if campaign:
@@ -118,15 +126,15 @@ async def websocket_endpoint(
                 current_encounter = manager.encounter_states.get(campaign_id, {})
                 
                 if message_data['type'] == 'start_encounter':
-                    initiative_order = message_data.get('payload', [])
-                    sorted_order = sorted(initiative_order, key=lambda x: x.get('roll', 0), reverse=True)
-                    active_entry = sorted_order[0] if sorted_order else None
+                    initiative_list = message_data.get('payload', [])
+                    sorted_list = sorted(initiative_list, key=lambda x: x.get('roll', 0), reverse=True)
+                    active_entry = sorted_list[0] if sorted_list else None
                     
                     # --- START FIX: Use 'initiative_entries' to match the frontend type ---
                     current_encounter = {
                         "is_active": True,
                         "turn_index": 0,
-                        "initiative_entries": sorted_order,
+                        "initiative_entries": sorted_list,
                         "active_initiative_entry_id": active_entry['id'] if active_entry else None
                     }
                     # --- END FIX ---
@@ -134,11 +142,14 @@ async def websocket_endpoint(
                     await manager.broadcast_json({"type": "encounter_update", "payload": current_encounter}, campaign_id)
 
                 elif message_data['type'] == 'next_turn':
-                    if current_encounter.get('is_active') and current_encounter.get('order'):
-                        order = current_encounter['order']
-                        current_encounter['turn_index'] = (current_encounter.get('turn_index', -1) + 1) % len(order)
-                        current_encounter['active_entry_id'] = order[current_encounter['turn_index']]['id']
-                        await manager.broadcast_json({"type": "encounter_update", "payload": build_encounter_payload(current_encounter)}, campaign_id)
+                    try:
+                        next_active_entry = await crud_campaign_session.advance_turn(db, session_id=active_session.id)
+                        await manager.broadcast_json({
+                            "type": "turn_update",
+                            "payload": {"active_entry_id": next_active_entry.id if next_active_entry else None}
+                        }, campaign_id)
+                    except Exception as e:
+                        await websocket.send_json({"type": "error", "payload": f"Failed to advance turn: {e}"})
                 
                 elif message_data['type'] == 'end_encounter':
                     manager.encounter_states[campaign_id] = {"is_active": False, "order": [], "turn_index": -1, "active_entry_id": None}
