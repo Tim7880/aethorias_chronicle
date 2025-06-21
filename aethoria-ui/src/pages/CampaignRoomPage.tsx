@@ -1,13 +1,12 @@
 // Path: src/pages/CampaignRoomPage.tsx
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { campaignService } from '../services/campaignService';
 import { characterService } from '../services/characterService';
 import { gameDataService } from '../services/gameDataService';
-// --- START FIX: Removed unused 'EncounterState' and 'InitiativeEntry' types ---
-import type { Campaign, Character } from '../types/campaign';
-// --- END FIX ---
+// --- FIX: Re-add InitiativeEntry and CampaignSession to the type import ---
+import type { Campaign, Character, CampaignSession, EncounterState, InitiativeEntry } from '../types/campaign';
 import type { Monster } from '../types/monster';
 import EncounterModal, { type Combatant } from '../components/game/EncounterModal';
 import styles from './CampaignRoomPage.module.css';
@@ -16,7 +15,6 @@ import { useCampaignSocket } from '../hooks/useCampaignSocket';
 import DiceRoller from '../components/game/DiceRoller';
 import CharacterStatModal from '../components/game/CharacterStatModal';
 import InitiativeTracker from '../components/game/InitiativeTracker';
-
 
 const CampaignRoomPage: React.FC = () => {
     const { campaignId } = useParams<{ campaignId: string }>();
@@ -57,39 +55,42 @@ const CampaignRoomPage: React.FC = () => {
     }, [chatLogMessages]);
 
     // This effect handles fetching all necessary data when the component mounts
-    useEffect(() => {
-        const fetchAllData = async () => {
-            if (!auth.token || !campaignId) return;
-            try {
-                const id = parseInt(campaignId, 10);
-                const [campaignData, monsterData, sessionData] = await Promise.all([
-                    campaignService.getCampaignById(auth.token, id),
-                    gameDataService.getMonsters(auth.token),
-                    campaignService.getActiveSession(auth.token, id).catch(() => null) // Gracefully handle if no session exists
-                ]);
-                
-                setCampaign(campaignData);
-                setMonsters(monsterData.sort((a, b) => a.name.localeCompare(b.name)));
-                
-                const dmStatus = !!(auth.user && campaignData.dm_user_id === auth.user.id);
-                setIsDm(dmStatus);
+    const fetchAllData = useCallback(async () => {
+        if (!auth.token || !campaignId) return;
+        try {
+            const id = parseInt(campaignId, 10);
+            const [campaignData, monsterData, sessionData] = await Promise.all([
+                campaignService.getCampaignById(auth.token, id),
+                gameDataService.getMonsters(auth.token),
+                campaignService.getActiveSession(auth.token, id).catch(() => null)
+            ]);
+            
+            setCampaign(campaignData);
+            setMonsters(monsterData.sort((a, b) => a.name.localeCompare(b.name)));
+            
+            const dmStatus = !!(auth.user && campaignData.dm_user_id === auth.user.id);
+            setIsDm(dmStatus);
 
-                // If a session already exists, join it. If not, and you're the DM, create it.
-                if (sessionData) {
-                    setEncounterState(sessionData);
-                } else if (dmStatus) {
-                    const newSession = await campaignService.startCampaignSession(auth.token, id);
-                    setEncounterState(newSession);
-                }
-            } catch (err: any) {
-                setError(err.message || 'Failed to load campaign data.');
-                if (err.message.includes("Unauthorized")) navigate('/dashboard');
-            } finally {
-                setIsLoading(false);
+            if (sessionData) {
+                setEncounterState(sessionData);
+            } else if (dmStatus) {
+                const newSession = await campaignService.startCampaignSession(auth.token, id);
+                setEncounterState(newSession);
             }
-        };
-        fetchAllData();
+        } catch (err: any) {
+            setError(err.message || 'Failed to load campaign data.');
+            if (err.message.includes("Unauthorized")) navigate('/dashboard');
+        } finally {
+            setIsLoading(false);
+        }
     }, [auth.token, campaignId, auth.user, setEncounterState, navigate]);
+
+
+    useEffect(() => {
+        fetchAllData();
+    }, [fetchAllData]);
+
+   
 
     const handleSendMessage = (e: React.FormEvent) => {
         e.preventDefault();
@@ -117,13 +118,15 @@ const CampaignRoomPage: React.FC = () => {
         setIsEncounterModalOpen(false);
     };
 
+    // --- START FIX: Use the correct property names from the backend session object ---
     const activeInitiativeEntries = encounterState?.is_active ? encounterState.initiative_entries : [];
     const activeTurnId = encounterState?.is_active ? encounterState.active_initiative_entry_id : null;
+    // --- END FIX ---
 
     if (isLoading) return <div className={styles.pageContainer}><h1>Loading Campaign Room...</h1></div>;
     if (error && !modalCharacter) return <div className={styles.pageContainer}><h1>Error: {error}</h1></div>;
     if (!campaign) return <div className={styles.pageContainer}><h1>Campaign not found.</h1></div>;
-    if (!encounterState && !isDm) return <div className={styles.pageContainer}><p>The Dungeon Master has not started the session yet.</p></div>
+    if (!encounterState && !isDm) return <div className={styles.pageContainer}><p>The Dungeon Master has not started the session yet.</p></div>;
 
     return (
         <>
